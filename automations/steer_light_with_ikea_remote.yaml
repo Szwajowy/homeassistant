@@ -15,13 +15,13 @@ blueprint:
       name: Włącznik światła
       description: Włacznik światła IKEA, którym chcemy zarządzać wybranym oświetleniem
       selector:
-        entity:
+        device:
 
 trigger:
   - alias: Włącznik zostanie naciśnięty
     platform: device
     domain: mqtt
-    entity_id: !input remote
+    device_id: !input remote
     type: action
     subtype: "on"
     discovery_id: 0xf082c0fffe0d976f action_on
@@ -29,7 +29,7 @@ trigger:
   - alias: Wyłącznik zostanie naciśnięty
     platform: device
     domain: mqtt
-    entity_id: !input remote
+    device_id: !input remote
     type: action
     subtype: "off"
     discovery_id: 0xf082c0fffe0d976f action_off
@@ -37,7 +37,7 @@ trigger:
   - alias: Włącznik zostanie przytrzymany
     platform: device
     domain: mqtt
-    entity_id: !input remote
+    device_id: !input remote
     type: action
     subtype: brightness_move_up
     discovery_id: 0xf082c0fffe0d976f action_brightness_move_up
@@ -45,7 +45,7 @@ trigger:
   - alias: Wyłącznik zostanie przytrzymany
     platform: device
     domain: mqtt
-    entity_id: !input remote
+    device_id: !input remote
     type: action
     subtype: brightness_move_down
     discovery_id: 0xf082c0fffe0d976f action_brightness_move_down
