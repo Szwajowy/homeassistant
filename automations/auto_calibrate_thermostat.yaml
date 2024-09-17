@@ -1,0 +1,88 @@
+blueprint:
+  name: Auto Calibrate Thermostat
+  description: Use separate temperature sensor to calibrate thermostat temperature
+  domain: automation
+  author: Krzysztof Czaja
+  input:
+    thermostat:
+      name: Termostat
+      description: Jaki termostat ma być kalibrowany
+      selector:
+        entity:
+          filter:
+            - domain: climate
+    temperature_sensor:
+      name: Sensor Temperatury
+      description: Jakiego sensora użyć do odczytu temperatury
+      selector:
+        entity:
+          filter:
+            - domain: sensor
+    idle_time:
+      name: Czas oczekiwania
+      description: Jaki czas odczekać po zmianie wartości temperatury przed kalibracją
+      selector:
+        number:
+          min: 0
+          max: 60
+          step: 1
+          unit_of_measurement: "min"
+          mode: box
+    winter_mode:
+      name: Tryb zimowy
+      description: Jeśli wyłączony to automatyzacja nie będzie działać
+      selector:
+        entity:
+          filter:
+            - domain: input_boolean
+trigger:
+  - alias: Zmienia się temperatura na termostacie
+    platform: state
+    entity_id: !input thermostat
+    attribute: current_temperature
+    for:
+      hours: 0
+      minutes: !input idle_time
+      seconds: 0
+  - alias: Zmienia się temperstura na czujniku
+    platform: state
+    entity_id: !input temperature_sensor
+    for:
+      hours: 0
+      minutes: !input idle_time
+      seconds: 0
+condition:
+  - condition: state
+    entity_id: !input winter_mode
+    state: "on"
+    alias: Tryb zimowy jest włączony
+action:
+  - variables:
+      thermostat_input: !input thermostat
+      temperature_sensor_input: !input temperature_sensor
+      calibration_entity: "{% set entities = device_entities(device_id(thermostat_input)) %}{% for entity in entities %}{% if 'calibration' in entity %}{{ entity }}{% endif %}{% endfor %}"
+      current_calibration: "{{ int(states(calibration_entity),0) }}"
+      thermostat_temp: "{{ state_attr(thermostat_input, 'current_temperature') }}"
+      sensor_temp: "{{ float(states(temperature_sensor_input)) + 0.1 }}"
+      temp_difference: "{{ thermostat_temp - sensor_temp }}"
+      new_calibration: "{{ current_calibration - temp_difference | round(0) }}"
+    alias: Ustaw zmienne
+  - service: system_log.write
+    metadata: {}
+    data:
+      level: warning
+      message: >-
+        U Meli - Current calibration: {{ current_calibration }}, Thermostat
+        temp: {{ thermostat_temp }}, Sensor temp: {{ sensor_temp }}, Rounded: {{
+        temp_difference | round(0) }}, New calibration : {{ new_calibration }}
+    enabled: true
+    alias: Loguj wartości
+  - service: number.set_value
+    metadata: {}
+    data:
+      value: "{{ new_calibration }}"
+    target:
+      entity_id: "{{ calibration_entity }}"
+    enabled: true
+    alias: Ustaw nową wartość kalibracji
+mode: restart
