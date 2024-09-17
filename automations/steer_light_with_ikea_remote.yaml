@@ -18,95 +18,95 @@ blueprint:
         entity:
           filter:
             - domain: mqtt
-  trigger:
-    - alias: Włącznik zostanie naciśnięty
-      platform: device
-      domain: mqtt
-      entity_id: !input remote
-      type: action
-      subtype: "on"
-      discovery_id: 0xf082c0fffe0d976f action_on
-      id: Włącznik naciśnięty
-    - alias: Wyłącznik zostanie naciśnięty
-      platform: device
-      domain: mqtt
-      entity_id: !input remote
-      type: action
-      subtype: "off"
-      discovery_id: 0xf082c0fffe0d976f action_off
-      id: Wyłącznik naciśnięty
-    - alias: Włącznik zostanie przytrzymany
-      platform: device
-      domain: mqtt
-      entity_id: !input remote
-      type: action
-      subtype: brightness_move_up
-      discovery_id: 0xf082c0fffe0d976f action_brightness_move_up
-      id: Włącznik przytrzymany
-    - alias: Wyłącznik zostanie przytrzymany
-      platform: device
-      domain: mqtt
-      entity_id: !input remote
-      type: action
-      subtype: brightness_move_down
-      discovery_id: 0xf082c0fffe0d976f action_brightness_move_down
-      id: Wyłącznik przytrzymany
-  condition: []
-  action:
-    - alias: Sterowanie oświetleniem
-      choose:
-        - conditions:
-            - condition: trigger
-              id:
-                - Włącznik naciśnięty
-          sequence:
-            - alias: Włącz światło
-              type: turn_on
-              entity_id: !input light
-              domain: light
-          alias: Włącz światło
-        - conditions:
-            - condition: trigger
-              id:
-                - Wyłącznik naciśnięty
-          sequence:
-            - alias: Wyłącz światło
-              type: turn_off
-              entity_id: !input light
-              domain: light
-          alias: Wyłącz światło
-        - conditions:
-            - condition: and
-              conditions:
-                - condition: trigger
-                  id:
-                    - Włącznik przytrzymany
-                - alias: Światło jest włączone
-                  condition: device
-                  type: is_on
-                  entity_id: !input light
-                  domain: light
-          sequence:
-            - alias: Zwiększ jasność
-              domain: light
-              entity_id: !input light
-              type: brightness_increase
-          alias: Zwiększ jasność
-        - conditions:
-            - condition: and
-              conditions:
-                - condition: trigger
-                  id:
-                    - Wyłącznik przytrzymany
-                - alias: Światło jest włączone
-                  condition: device
-                  type: is_on
-                  entity_id: !input light
-                  domain: light
-          sequence:
-            - alias: Zmniejsz jasność
-              domain: light
-              entity_id: !input light
-              type: brightness_decrease
-          alias: Zmniejsz jasność
+trigger:
+  - alias: Włącznik zostanie naciśnięty
+    platform: device
+    domain: mqtt
+    entity_id: !input remote
+    type: action
+    subtype: "on"
+    discovery_id: 0xf082c0fffe0d976f action_on
+    id: Włącznik naciśnięty
+  - alias: Wyłącznik zostanie naciśnięty
+    platform: device
+    domain: mqtt
+    entity_id: !input remote
+    type: action
+    subtype: "off"
+    discovery_id: 0xf082c0fffe0d976f action_off
+    id: Wyłącznik naciśnięty
+  - alias: Włącznik zostanie przytrzymany
+    platform: device
+    domain: mqtt
+    entity_id: !input remote
+    type: action
+    subtype: brightness_move_up
+    discovery_id: 0xf082c0fffe0d976f action_brightness_move_up
+    id: Włącznik przytrzymany
+  - alias: Wyłącznik zostanie przytrzymany
+    platform: device
+    domain: mqtt
+    entity_id: !input remote
+    type: action
+    subtype: brightness_move_down
+    discovery_id: 0xf082c0fffe0d976f action_brightness_move_down
+    id: Wyłącznik przytrzymany
+condition: []
+action:
+  - alias: Sterowanie oświetleniem
+    choose:
+      - conditions:
+          - condition: trigger
+            id:
+              - Włącznik naciśnięty
+        sequence:
+          - alias: Włącz światło
+            type: turn_on
+            entity_id: !input light
+            domain: light
+        alias: Włącz światło
+      - conditions:
+          - condition: trigger
+            id:
+              - Wyłącznik naciśnięty
+        sequence:
+          - alias: Wyłącz światło
+            type: turn_off
+            entity_id: !input light
+            domain: light
+        alias: Wyłącz światło
+      - conditions:
+          - condition: and
+            conditions:
+              - condition: trigger
+                id:
+                  - Włącznik przytrzymany
+              - alias: Światło jest włączone
+                condition: device
+                type: is_on
+                entity_id: !input light
+                domain: light
+        sequence:
+          - alias: Zwiększ jasność
+            domain: light
+            entity_id: !input light
+            type: brightness_increase
+        alias: Zwiększ jasność
+      - conditions:
+          - condition: and
+            conditions:
+              - condition: trigger
+                id:
+                  - Wyłącznik przytrzymany
+              - alias: Światło jest włączone
+                condition: device
+                type: is_on
+                entity_id: !input light
+                domain: light
+        sequence:
+          - alias: Zmniejsz jasność
+            domain: light
+            entity_id: !input light
+            type: brightness_decrease
+        alias: Zmniejsz jasność
 mode: single
