@@ -14,6 +14,8 @@ blueprint:
     remote:
       name: Włącznik światła
       description: Włacznik światła IKEA, którym chcemy zarządzać wybranym oświetleniem
+      selector:
+        entity:
 
 trigger:
   - alias: Włącznik zostanie naciśnięty
