@@ -146,7 +146,6 @@ action:
           target:
             entity_id: !input thermostat
         - service: climate.set_temperature
-          metadata: {}
           data:
             temperature: "{{ states(temperature_day_input) }}"
           target:
@@ -155,12 +154,11 @@ action:
 
     default:
       - service: climate.set_hvac_mode
-          data:
-            hvac_mode: heat
-          target:
-            entity_id: !input thermostat
+        data:
+          hvac_mode: heat
+        target:
+          entity_id: !input thermostat
       - service: climate.set_temperature
-        metadata: {}
         data:
           temperature: "{{ states(temperature_night_input) }}"
         target:
