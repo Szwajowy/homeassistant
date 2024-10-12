@@ -116,6 +116,7 @@ action:
           target:
             entity_id: "{{ thermostat_input }}"
 
+    - conditions:
       - condition: state
         entity_id: !input schedule
         state: "on"
@@ -129,12 +130,12 @@ action:
             entity_id: "{{ thermostat_input }}"
           alias: Ustaw dzienną temperaturę
 
-      default:
-        - service: climate.set_temperature
-          metadata: {}
-          data:
-            temperature: "{{ states(temperature_night_input) }}"
-          target:
-            entity_id: "{{ thermostat_input }}"
-          alias: Ustaw nocną temperaturę
+    default:
+      - service: climate.set_temperature
+        metadata: {}
+        data:
+          temperature: "{{ states(temperature_night_input) }}"
+        target:
+          entity_id: "{{ thermostat_input }}"
+        alias: Ustaw nocną temperaturę
 mode: single
