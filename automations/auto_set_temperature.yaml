@@ -90,9 +90,7 @@ trigger:
       - !input temperature_away
       
   - platform: state
-    entity_id: >
-      {% for window_sensor in !input window_sensors %}
-      - {{ window_sensor }}{% endfor %}
+    entity_id: !input window_sensors
       
 condition:
   - condition: state
