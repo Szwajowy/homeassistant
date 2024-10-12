@@ -88,6 +88,7 @@ trigger:
       - !input temperature_day
       - !input temperature_night
       - !input temperature_away
+      - !input window_sensors
       
 condition:
   - condition: state
