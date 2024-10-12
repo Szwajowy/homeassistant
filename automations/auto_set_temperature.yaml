@@ -141,10 +141,10 @@ action:
         alias: Jest dzień
       sequence:
         - service: climate.set_hvac_mode
-           data:
-             hvac_mode: heat
-           target:
-             entity_id: !input thermostat
+          data:
+            hvac_mode: heat
+          target:
+            entity_id: !input thermostat
         - service: climate.set_temperature
           metadata: {}
           data:
