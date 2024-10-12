@@ -92,8 +92,7 @@ trigger:
   - platform: state
     entity_id: >
       {% for window_sensor in window_sensors %}
-        - {{ window_sensor }}
-      {% endfor %}
+      - {{ window_sensor }}{% endfor %}
       
 condition:
   - condition: state
