@@ -3,7 +3,10 @@ blueprint:
   description: Set the target temperature on thermostat depending on multiple properties
   domain: automation
   author: Krzysztof Czaja
+
+  # UI Inputs
   input:
+    # Thermostat input
     thermostat:
       name: Termostat
       description: Jakim termostatem zarządzać
@@ -11,14 +14,18 @@ blueprint:
         entity:
           filter:
             - domain: climate
+
+    # Window sensors input
     window_sensors:
       name: Czujniki otwarcia okna
-      description: Będą wykorzystane do wyłączania ogrzewania, gdy ok o jest otwarte.
+      description: Będą wykorzystane do wyłączania ogrzewania, gdy okno jest otwarte.
       selector:
         entity:
           filter:
             - domain: binary_sensor
           multiple: true
+
+    # Winter mode input
     winter_mode:
       name: Tryb zimowy
       description: Jeśli wyłączony to automatyzacja nie będzie działać
@@ -26,6 +33,8 @@ blueprint:
         entity:
           filter:
             - domain: input_boolean
+
+    # Away mode input
     away_mode:
       name: Tryb poza domem
       description: Jeśli włączony to termostaty będą ustawione na minimalne grzanie
@@ -33,6 +42,8 @@ blueprint:
         entity:
           filter:
             - domain: input_boolean
+
+    # Heating schedule input 
     schedule:
       name: Harmonogram pracy
       description: Zależnie od niego będzie ustawiona temperature dzienna, bądź nocna
@@ -40,6 +51,8 @@ blueprint:
         entity:
           filter:
             - domain: schedule
+
+    # Day temperature input
     temperature_day:
       name: Temperatura dzienna
       description: Temperatura jaka powinna być ustawiona w dzień
@@ -47,6 +60,8 @@ blueprint:
         entity:
           filter:
             - domain: input_number
+
+    # Night temperature input
     temperature_night:
       name: Temperatura nocna
       description: Temperatura jaka powinna być ustawiona w nocy
@@ -54,6 +69,8 @@ blueprint:
         entity:
           filter:
             - domain: input_number
+    
+    # Away temperature input
     temperature_away:
       name: Temperatura minimalna
       description: Temperatura jaka powinna być ustawiona, gdy tryb poza domem jest włączony
@@ -61,6 +78,7 @@ blueprint:
         entity:
           filter:
             - domain: input_number
+            
 trigger:
   - platform: state
     entity_id:
@@ -70,10 +88,12 @@ trigger:
       - !input temperature_day
       - !input temperature_night
       - !input temperature_away
+      
 condition:
   - condition: state
     entity_id: !input winter_mode
     state: "on"
+    
 action:
   - variables:
       thermostat_input: !input thermostat
@@ -81,41 +101,40 @@ action:
       temperature_day_input: !input temperature_day
       temperature_night_input: !input temperature_night
       temperature_away_input: !input temperature_away
-  - if:
+  
+  - choose:
+    - conditions:
       - condition: state
         entity_id: !input away_mode
-        state: "off"
-        alias: Tryb poza domem wyłączony 
-    then:
-      - if:
-          - condition: state
-            entity_id: !input schedule
-            state: "on"
-            alias: Jest dzień
-        then:
-          - service: climate.set_temperature
-            metadata: {}
-            data:
-              temperature: "{{ states(temperature_day_input) }}"
-            target:
-              entity_id: "{{ thermostat_input }}"
-            alias: Ustaw dzienną temperaturę
-        else:
-          - service: climate.set_temperature
-            metadata: {}
-            data:
-              temperature: "{{ states(temperature_night_input) }}"
-            target:
-              entity_id: "{{ thermostat_input }}"
-            alias: Ustaw nocną temperaturę
-        alias: Ustaw ogrzewanie dzień/noc
-    else:
-      - service: climate.set_temperature
-        metadata: {}
-        data:
-          temperature: "{{ states(temperature_away_input) }}"
-        target:
-          entity_id: "{{ thermostat_input }}"
-        alias: Ustaw minimalną temperaturę
-    alias: Steruj termostatem
+        state: "on"
+        alias: Tryb poza domem włączony 
+      sequence:
+        - service: climate.set_temperature
+          metadata: {}
+          data:
+            temperature: "{{ states(temperature_away_input) }}"
+          target:
+            entity_id: "{{ thermostat_input }}"
+
+      - condition: state
+        entity_id: !input schedule
+        state: "on"
+        alias: Jest dzień
+      sequence:
+        - service: climate.set_temperature
+          metadata: {}
+          data:
+            temperature: "{{ states(temperature_day_input) }}"
+          target:
+            entity_id: "{{ thermostat_input }}"
+          alias: Ustaw dzienną temperaturę
+
+      default:
+        - service: climate.set_temperature
+          metadata: {}
+          data:
+            temperature: "{{ states(temperature_night_input) }}"
+          target:
+            entity_id: "{{ thermostat_input }}"
+          alias: Ustaw nocną temperaturę
 mode: single
