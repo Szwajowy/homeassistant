@@ -110,12 +110,12 @@ action:
         state: "on"
         match: any
         alias: Okno otwarte
-     sequence:
-       - service: climate.set_hvac_mode
-         data:
-           hvac_mode: off
-         target:
-           entity_id: !input thermostat
+      sequence:
+        - service: climate.set_hvac_mode
+          data:
+            hvac_mode: off
+          target:
+            entity_id: !input thermostat
         
     - conditions:
       - condition: state
