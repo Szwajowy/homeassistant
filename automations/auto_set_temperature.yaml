@@ -81,15 +81,18 @@ blueprint:
             
 trigger:
   - platform: state
+    entity_id:
+      - !input schedule
+      - !input winter_mode
+      - !input away_mode
+      - !input temperature_day
+      - !input temperature_night
+      - !input temperature_away
+      
+  - platform: state
     entity_id: >
-      !input schedule
-      !input winter_mode
-      !input away_mode
-      !input temperature_day
-      !input temperature_night
-      !input temperature_away
       {% for window_sensor in window_sensors %}
-        {{ window_sensor }}
+        - {{ window_sensor }}
       {% endfor %}
       
 condition:
