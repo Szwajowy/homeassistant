@@ -88,7 +88,9 @@ trigger:
       - !input temperature_day
       - !input temperature_night
       - !input temperature_away
-      - !input window_sensors
+      {% for window_sensor in window_sensors %}
+       - {{ window_sensor }}
+      {% endfor %}
       
 condition:
   - condition: state
