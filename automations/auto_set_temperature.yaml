@@ -81,7 +81,7 @@ blueprint:
             
 trigger:
   - platform: state
-    entity_id:
+    entity_id: >
       - !input schedule
       - !input winter_mode
       - !input away_mode
