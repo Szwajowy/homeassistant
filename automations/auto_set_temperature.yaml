@@ -19,6 +19,7 @@ blueprint:
     window_sensors:
       name: Czujniki otwarcia okna
       description: Będą wykorzystane do wyłączania ogrzewania, gdy okno jest otwarte.
+      default:
       selector:
         entity:
           filter:
