@@ -8,7 +8,7 @@ blueprint:
       name: Oświetlenie
       description: Oświetlenie, które będzie sterowane pilotem
       selector:
-        target:
+        entity:
     remote:
       name: Włącznik światła
       description: Włacznik światła IKEA, którym chcemy zarządzać wybranym oświetleniem
