@@ -86,13 +86,13 @@ action:
                 - service: light.turn_on
                   data:
                     brightness_step_pct: 5
-                    transition: 0.1
+                    transition: 0.2
                   target: !input light
                 - delay:
                     hours: 0
                     minutes: 0
                     seconds: 0
-                    milliseconds: 100
+                    milliseconds: 200
               count: 50
               
       - conditions:
@@ -104,13 +104,13 @@ action:
               sequence:
                 - service: light.turn_on
                   data:
-                    transition: 0.1
+                    transition: 0.2
                     brightness_step_pct: -5
                   target: !input light
                 - delay:
                     hours: 0
                     minutes: 0
                     seconds: 0
-                    milliseconds: 100
+                    milliseconds: 200
               count: 50
 mode: single
