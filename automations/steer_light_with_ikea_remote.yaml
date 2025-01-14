@@ -80,18 +80,18 @@ action:
               - Włącznik przytrzymany
         sequence:
           - repeat:
-            sequence:
-              - service: light.turn_on
-                data:
-                  brightness_step_pct: 5
-                  transition: 0.1
-                target: !input light
-              - delay:
-                  hours: 0
-                  minutes: 0
-                  seconds: 0
-                  milliseconds: 100
-            count: 50
+              sequence:
+                - service: light.turn_on
+                  data:
+                    brightness_step_pct: 5
+                    transition: 0.1
+                  target: !input light
+                - delay:
+                    hours: 0
+                    minutes: 0
+                    seconds: 0
+                    milliseconds: 100
+              count: 50
         alias: Zwiększ jasność
       - conditions:
         - condition: trigger
@@ -99,17 +99,17 @@ action:
             - Wyłącznik przytrzymany
         sequence:
           - repeat:
-            sequence:
-              - service: light.turn_on
-                data:
-                  transition: 0.1
-                  brightness_step_pct: -5
-                target: !input light
-              - delay:
-                  hours: 0
-                  minutes: 0
-                  seconds: 0
-                  milliseconds: 100
-            count: 50
+              sequence:
+                - service: light.turn_on
+                  data:
+                    transition: 0.1
+                    brightness_step_pct: -5
+                  target: !input light
+                - delay:
+                    hours: 0
+                    minutes: 0
+                    seconds: 0
+                    milliseconds: 100
+              count: 50
         alias: Zmniejsz jasność
 mode: single
