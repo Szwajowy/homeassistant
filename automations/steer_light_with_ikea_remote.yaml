@@ -51,6 +51,13 @@ trigger:
     subtype: brightness_move_down
     # discovery_id: 0xf082c0fffe0d976f action_brightness_move_down
     id: Wyłącznik przytrzymany
+
+    -  trigger: device
+    domain: mqtt
+    device_id: !input remote
+    type: action
+    subtype: brightness_stop
+    id: Przerwanie akcji
     
 condition: []
 
