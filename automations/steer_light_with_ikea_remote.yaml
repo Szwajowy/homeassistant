@@ -8,47 +8,54 @@ blueprint:
       name: Oświetlenie
       description: Oświetlenie, które będzie sterowane pilotem
       selector:
-        entity:
-          filter:
-            - domain: light
+        target:
     remote:
       name: Włącznik światła
       description: Włacznik światła IKEA, którym chcemy zarządzać wybranym oświetleniem
       selector:
         device:
+          entity:
+            integration: mqtt
+          filter:
+            - integration: ikea_light_switch
+              manufacturer: IKEA
+              model: TRADFRI on/off switch
+            - integration: ikea_light_switch
+              manufacturer: IKEA
+              model: RODRET wireless dimmer/power switch
 
 trigger:
   - alias: Włącznik zostanie naciśnięty
-    platform: device
+    trigger: device
     domain: mqtt
     device_id: !input remote
     type: action
     subtype: "on"
-    discovery_id: 0xf082c0fffe0d976f action_on
+    # discovery_id: 0xf082c0fffe0d976f action_on
     id: Włącznik naciśnięty
   - alias: Wyłącznik zostanie naciśnięty
-    platform: device
+    trigger: device
     domain: mqtt
     device_id: !input remote
     type: action
     subtype: "off"
-    discovery_id: 0xf082c0fffe0d976f action_off
+    # discovery_id: 0xf082c0fffe0d976f action_off
     id: Wyłącznik naciśnięty
   - alias: Włącznik zostanie przytrzymany
-    platform: device
+    trigger: device
     domain: mqtt
     device_id: !input remote
     type: action
     subtype: brightness_move_up
-    discovery_id: 0xf082c0fffe0d976f action_brightness_move_up
+    # discovery_id: 0xf082c0fffe0d976f action_brightness_move_up
     id: Włącznik przytrzymany
   - alias: Wyłącznik zostanie przytrzymany
-    platform: device
+    trigger: device
     domain: mqtt
     device_id: !input remote
     type: action
     subtype: brightness_move_down
-    discovery_id: 0xf082c0fffe0d976f action_brightness_move_down
+    # discovery_id: 0xf082c0fffe0d976f action_brightness_move_down
     id: Wyłącznik przytrzymany
 condition: []
 action:
@@ -61,8 +68,8 @@ action:
         sequence:
           - alias: Włącz światło
             service: light.turn_on
-            data:
-              entity_id: light.sypialnia_meli_lampka_nocna_zarowka
+            data: {}
+            target: !input light
         alias: Włącz światło
       - conditions:
           - condition: trigger
@@ -71,8 +78,8 @@ action:
         sequence:
           - alias: Wyłącz światło
             service: light.turn_off
-            data:
-              entity_id: light.sypialnia_meli_lampka_nocna_zarowkat
+            data: {}
+            target: !input light
         alias: Wyłącz światło
       - conditions:
           - condition: and
@@ -86,10 +93,19 @@ action:
                 state: "on"
         sequence:
           - alias: Zwiększ jasność
-            service: light.turn_on
-            data:
-              entity_id: !input light
-              brightness_step_pct: 10
+            - repeat:
+              sequence:
+                - service: light.turn_on
+                  data:
+                    brightness_step_pct: 5
+                    transition: 0.1
+                  target: !input light
+                - delay:
+                    hours: 0
+                    minutes: 0
+                    seconds: 0
+                    milliseconds: 100
+              count: 50
         alias: Zwiększ jasność
       - conditions:
           - condition: and
@@ -100,12 +116,21 @@ action:
               - alias: Światło jest włączone
                 condition: state
                 entity_id: !input light
-                state: "off"
+                state: "on"
         sequence:
           - alias: Zmniejsz jasność
-            service: light.turn_on
-            data:
-              entity_id: !input light
-              brightness_step_pct: -10
+            - repeat:
+              sequence:
+                - service: light.turn_on
+                  data:
+                    transition: 0.1
+                    brightness_step_pct: -5
+                  target: !input light
+                - delay:
+                    hours: 0
+                    minutes: 0
+                    seconds: 0
+                    milliseconds: 100
+              count: 50
         alias: Zmniejsz jasność
 mode: single
