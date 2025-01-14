@@ -120,4 +120,4 @@ action:
                     seconds: 0
                     milliseconds: 200
               count: 50
-mode: single
+mode: restart
