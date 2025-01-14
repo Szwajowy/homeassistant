@@ -16,13 +16,6 @@ blueprint:
         device:
           entity:
             integration: mqtt
-          filter:
-            - integration: ikea_light_switch
-              manufacturer: IKEA
-              model: TRADFRI on/off switch
-            - integration: ikea_light_switch
-              manufacturer: IKEA
-              model: RODRET wireless dimmer/power switch
 
 trigger:
   - alias: Włącznik zostanie naciśnięty
