@@ -81,10 +81,9 @@ action:
                 id:
                   - Włącznik przytrzymany
               - alias: Światło jest włączone
-                condition: device
-                type: is_on
+                condition: state
                 entity_id: !input light
-                domain: light
+                state: "on"
         sequence:
           - alias: Zwiększ jasność
             service: light.turn_on
@@ -99,10 +98,9 @@ action:
                 id:
                   - Wyłącznik przytrzymany
               - alias: Światło jest włączone
-                condition: device
-                type: is_on
+                condition: state
                 entity_id: !input light
-                domain: light
+                state: "off"
         sequence:
           - alias: Zmniejsz jasność
             service: light.turn_on
