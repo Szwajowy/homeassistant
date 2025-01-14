@@ -60,9 +60,9 @@ action:
               - Włącznik naciśnięty
         sequence:
           - alias: Włącz światło
-            type: turn_on
-            entity_id: !input light
-            domain: light
+            service: light.turn_on
+            data:
+              entity_id: light.sypialnia_meli_lampka_nocna_zarowka
         alias: Włącz światło
       - conditions:
           - condition: trigger
@@ -70,9 +70,9 @@ action:
               - Wyłącznik naciśnięty
         sequence:
           - alias: Wyłącz światło
-            type: turn_off
-            entity_id: !input light
-            domain: light
+            service: light.turn_off
+            data:
+              entity_id: light.sypialnia_meli_lampka_nocna_zarowkat
         alias: Wyłącz światło
       - conditions:
           - condition: and
@@ -87,9 +87,10 @@ action:
                 domain: light
         sequence:
           - alias: Zwiększ jasność
-            domain: light
-            entity_id: !input light
-            type: brightness_increase
+            service: light.turn_on
+            data:
+              entity_id: !input light
+              brightness_step_pct: 10
         alias: Zwiększ jasność
       - conditions:
           - condition: and
@@ -104,8 +105,9 @@ action:
                 domain: light
         sequence:
           - alias: Zmniejsz jasność
-            domain: light
-            entity_id: !input light
-            type: brightness_decrease
+            service: light.turn_on
+            data:
+              entity_id: !input light
+              brightness_step_pct: -10
         alias: Zmniejsz jasność
 mode: single
