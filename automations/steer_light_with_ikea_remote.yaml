@@ -8,7 +8,7 @@ blueprint:
       name: Oświetlenie
       description: Oświetlenie, które będzie sterowane pilotem
       selector:
-        entity:
+        target:
     remote:
       name: Włącznik światła
       description: Włacznik światła IKEA, którym chcemy zarządzać wybranym oświetleniem
@@ -75,15 +75,9 @@ action:
             target: !input light
         alias: Wyłącz światło
       - conditions:
-          - condition: and
-            conditions:
-              - condition: trigger
-                id:
-                  - Włącznik przytrzymany
-              - alias: Światło jest włączone
-                condition: state
-                entity_id: !input light
-                state: "on"
+          - condition: trigger
+            id:
+              - Włącznik przytrzymany
         sequence:
           - repeat:
             sequence:
@@ -100,15 +94,9 @@ action:
             count: 50
         alias: Zwiększ jasność
       - conditions:
-          - condition: and
-            conditions:
-              - condition: trigger
-                id:
-                  - Wyłącznik przytrzymany
-              - alias: Światło jest włączone
-                condition: state
-                entity_id: !input light
-                state: "on"
+        - condition: trigger
+          id:
+            - Wyłącznik przytrzymany
         sequence:
           - repeat:
             sequence:
