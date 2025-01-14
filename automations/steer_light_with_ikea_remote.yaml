@@ -3,12 +3,14 @@ blueprint:
   description: Use IKEA remote to turn on/off light and increase/decrease brightness.
   domain: automation
   author: Krzysztof Czaja
+  
   input:
     light:
       name: Oświetlenie
       description: Oświetlenie, które będzie sterowane pilotem
       selector:
         target:
+        
     remote:
       name: Włącznik światła
       description: Włacznik światła IKEA, którym chcemy zarządzać wybranym oświetleniem
@@ -18,41 +20,41 @@ blueprint:
             integration: mqtt
 
 trigger:
-  - alias: Włącznik zostanie naciśnięty
-    trigger: device
+  - trigger: device
     domain: mqtt
     device_id: !input remote
     type: action
     subtype: "on"
     # discovery_id: 0xf082c0fffe0d976f action_on
     id: Włącznik naciśnięty
-  - alias: Wyłącznik zostanie naciśnięty
-    trigger: device
+    
+  - trigger: device
     domain: mqtt
     device_id: !input remote
     type: action
     subtype: "off"
     # discovery_id: 0xf082c0fffe0d976f action_off
     id: Wyłącznik naciśnięty
-  - alias: Włącznik zostanie przytrzymany
-    trigger: device
+    
+  - trigger: device
     domain: mqtt
     device_id: !input remote
     type: action
     subtype: brightness_move_up
     # discovery_id: 0xf082c0fffe0d976f action_brightness_move_up
     id: Włącznik przytrzymany
-  - alias: Wyłącznik zostanie przytrzymany
-    trigger: device
+    
+  - trigger: device
     domain: mqtt
     device_id: !input remote
     type: action
     subtype: brightness_move_down
     # discovery_id: 0xf082c0fffe0d976f action_brightness_move_down
     id: Wyłącznik przytrzymany
+    
 condition: []
+
 action:
-  - alias: Sterowanie oświetleniem
     choose:
       - conditions:
           - condition: trigger
@@ -63,7 +65,7 @@ action:
             service: light.turn_on
             data: {}
             target: !input light
-        alias: Włącz światło
+        
       - conditions:
           - condition: trigger
             id:
@@ -73,7 +75,7 @@ action:
             service: light.turn_off
             data: {}
             target: !input light
-        alias: Wyłącz światło
+        
       - conditions:
           - condition: trigger
             id:
@@ -92,7 +94,7 @@ action:
                     seconds: 0
                     milliseconds: 100
               count: 50
-        alias: Zwiększ jasność
+              
       - conditions:
         - condition: trigger
           id:
@@ -111,5 +113,4 @@ action:
                     seconds: 0
                     milliseconds: 100
               count: 50
-        alias: Zmniejsz jasność
 mode: single
