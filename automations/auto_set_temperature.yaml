@@ -30,23 +30,21 @@ blueprint:
       name: Czas reakcji na otwarcie okna
       description: Po tym czasie termostaty zostaną zakręcone
       default:
+        hours: 0
+        minutes: 0
+        seconds: 15
       selector:
-        number:
-          min: 0
-          max: 1800
-          mode: box
-          unit_of_measurement: sek.
+        time:
 
     windows_reaction_time_close:
       name: Czas reakcji na zamknięcie okna
       description: Po tym czasie termostaty zostaną ponownie ustawione na zadaną temperaturę
       default:
+        hours: 0
+        minutes: 0
+        seconds: 15
       selector:
-        number:
-          min: 0
-          max: 1800
-          mode: box
-          unit_of_measurement: sek.
+        time:
 
     # Winter mode input
     winter_mode:
