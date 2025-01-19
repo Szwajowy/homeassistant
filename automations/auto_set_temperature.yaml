@@ -26,6 +26,28 @@ blueprint:
             - domain: binary_sensor
           multiple: true
 
+    windows_reaction_time_open:
+      name: Czas reakcji na otwarcie okna
+      description: Po tym czasie termostaty zostaną zakręcone
+      default:
+      selector:
+        number:
+          min: 0
+          max: 1800
+          mode: box
+          unit_of_measurement: sek.
+
+    windows_reaction_time_close:
+      name: Czas reakcji na zamknięcie okna
+      description: Po tym czasie termostaty zostaną ponownie ustawione na zadaną temperaturę
+      default:
+      selector:
+        number:
+          min: 0
+          max: 1800
+          mode: box
+          unit_of_measurement: sek.
+
     # Winter mode input
     winter_mode:
       name: Tryb zimowy
@@ -81,7 +103,7 @@ blueprint:
             - domain: input_number
             
 trigger:
-  - platform: state
+  - trigger: state
     entity_id:
       - !input schedule
       - !input winter_mode
@@ -90,8 +112,17 @@ trigger:
       - !input temperature_night
       - !input temperature_away
       
-  - platform: state
-    entity_id: !input window_sensors
+  # window
+  - trigger: template
+    value_template: "{{ expand(window_sensors) | selectattr('state', 'in', ['on','open','tilted']) | list | count > 0 }}"
+    for: !input windows_reaction_time_open
+    id: window_open
+
+  - trigger: template
+    value_template: "{{ expand(window_sensors) | selectattr('state', 'in', ['on','open','tilted']) | list | count == 0 }}"
+    for: !input windows_reaction_time_close
+    id: window_closed
+    
       
 condition:
   - condition: state
@@ -106,10 +137,8 @@ action:
   
   - choose:
     - conditions:
-      - condition: state
-        entity_id: !input window_sensors
-        state: "on"
-        match: any
+      - condition: trigger
+        id: window_open
         alias: Okno otwarte
       sequence:
         - service: climate.set_hvac_mode
