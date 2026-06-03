@@ -1,0 +1,267 @@
+blueprint:
+  name: IKEA RODRET/TRADFRI - sterowanie oswietleniem (MQTT)
+  description: >
+    Sterowanie swiatlem (lub grupa swiatel) pilotem IKEA RODRET albo TRADFRI przez MQTT Device Triggers.
+    Domyslnie:
+    - 1x ON: wlacz
+    - 1x OFF: wylacz
+    - hold ON: rozjasnia krokowo
+    - hold OFF: sciemnia krokowo, bez wylaczania przy minimum
+    Dodatkowo:
+    - 2x ON/OFF: konfigurowalne akcje
+    - 3x ON/OFF: konfigurowalne akcje
+    Uwaga: 2x/3x zadziala tylko, jesli pilot/integracja wysyla takie akcje.
+  domain: automation
+  input:
+    remote_device:
+      name: Pilot IKEA (RODRET/TRADFRI)
+      description: Wybierz urzadzenie pilota z MQTT.
+      selector:
+        device:
+          integration: mqtt
+
+    light_target:
+      name: Cel swiatla
+      description: Moze to byc pojedyncze swiatlo, grupa swiatel (light.*) lub area.
+      selector:
+        target:
+          entity:
+            domain: light
+
+    dim_step_pct:
+      name: Krok zmiany jasnosci (%)
+      description: O ile procent zmieniac jasnosc przy jednym kroku przytrzymania.
+      default: 5
+      selector:
+        number:
+          min: 1
+          max: 25
+          step: 1
+          unit_of_measurement: "%"
+          mode: slider
+
+    dim_interval_ms:
+      name: Tempo zmiany (ms)
+      description: Co ile ms wykonywac kolejny krok jasnosci podczas przytrzymania.
+      default: 180
+      selector:
+        number:
+          min: 50
+          max: 1000
+          step: 10
+          unit_of_measurement: ms
+          mode: slider
+
+    startup_brightness_pct:
+      name: Jasnosc startowa przy hold ON z wylaczonego (%)
+      description: Gdy swiatlo jest off i przytrzymasz ON, najpierw wlaczy sie z ta jasnoscia.
+      default: 1
+      selector:
+        number:
+          min: 1
+          max: 30
+          step: 1
+          unit_of_measurement: "%"
+          mode: slider
+
+    min_brightness_pct:
+      name: Minimalna jasnosc ochronna (%)
+      description: Gdy sciemnianie zejdzie do minimum, swiatlo nie bedzie wylaczane.
+      default: 1
+      selector:
+        number:
+          min: 1
+          max: 20
+          step: 1
+          unit_of_measurement: "%"
+          mode: slider
+
+    on_double_action:
+      name: Akcja po 2x ON
+      default: []
+      selector:
+        action: {}
+
+    off_double_action:
+      name: Akcja po 2x OFF
+      default: []
+      selector:
+        action: {}
+
+    on_triple_action:
+      name: Akcja po 3x ON
+      default: []
+      selector:
+        action: {}
+
+    off_triple_action:
+      name: Akcja po 3x OFF
+      default: []
+      selector:
+        action: {}
+
+mode: restart
+max_exceeded: silent
+
+variables:
+  dim_step_pct: !input dim_step_pct
+  dim_interval_ms: !input dim_interval_ms
+  startup_brightness_pct: !input startup_brightness_pct
+  min_brightness_pct: !input min_brightness_pct
+
+trigger:
+  - platform: device
+    domain: mqtt
+    device_id: !input remote_device
+    type: action
+    subtype: "on"
+    id: on_single
+
+  - platform: device
+    domain: mqtt
+    device_id: !input remote_device
+    type: action
+    subtype: "off"
+    id: off_single
+
+  - platform: device
+    domain: mqtt
+    device_id: !input remote_device
+    type: action
+    subtype: "brightness_move_up"
+    id: on_hold
+
+  - platform: device
+    domain: mqtt
+    device_id: !input remote_device
+    type: action
+    subtype: "brightness_move_down"
+    id: off_hold
+
+  - platform: device
+    domain: mqtt
+    device_id: !input remote_device
+    type: action
+    subtype: "on_double"
+    id: on_double
+
+  - platform: device
+    domain: mqtt
+    device_id: !input remote_device
+    type: action
+    subtype: "off_double"
+    id: off_double
+
+  - platform: device
+    domain: mqtt
+    device_id: !input remote_device
+    type: action
+    subtype: "on_triple"
+    id: on_triple
+
+  - platform: device
+    domain: mqtt
+    device_id: !input remote_device
+    type: action
+    subtype: "off_triple"
+    id: off_triple
+
+condition: []
+
+action:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: on_single
+        sequence:
+          - service: light.turn_on
+            target: !input light_target
+
+      - conditions:
+          - condition: trigger
+            id: off_single
+        sequence:
+          - service: light.turn_off
+            target: !input light_target
+
+      - conditions:
+          - condition: trigger
+            id: on_hold
+        sequence:
+          - service: light.turn_on
+            target: !input light_target
+            data:
+              brightness_pct: !input startup_brightness_pct
+          - repeat:
+              sequence:
+                - service: light.turn_on
+                  target: !input light_target
+                  data:
+                    brightness_step_pct: !input dim_step_pct
+                - wait_for_trigger:
+                    - platform: device
+                      domain: mqtt
+                      device_id: !input remote_device
+                      type: action
+                      subtype: "brightness_stop"
+                  timeout:
+                    milliseconds: !input dim_interval_ms
+                  continue_on_timeout: true
+                - if:
+                    - condition: template
+                      value_template: "{{ wait.trigger is not none }}"
+                  then:
+                    - stop: "Zatrzymano rozjasnianie (zwolniono przycisk)."
+
+      - conditions:
+          - condition: trigger
+            id: off_hold
+        sequence:
+          - service: light.turn_on
+            target: !input light_target
+            data:
+              brightness_step_pct: "{{ (dim_step_pct | int) * -1 }}"
+          - repeat:
+              sequence:
+                - service: light.turn_on
+                  target: !input light_target
+                  data:
+                    brightness_step_pct: "{{ (dim_step_pct | int) * -1 }}"
+                - service: light.turn_on
+                  target: !input light_target
+                  data:
+                    brightness_pct: !input min_brightness_pct
+                - wait_for_trigger:
+                    - platform: device
+                      domain: mqtt
+                      device_id: !input remote_device
+                      type: action
+                      subtype: "brightness_stop"
+                  timeout:
+                    milliseconds: !input dim_interval_ms
+                  continue_on_timeout: true
+                - if:
+                    - condition: template
+                      value_template: "{{ wait.trigger is not none }}"
+                  then:
+                    - stop: "Zatrzymano sciemnianie (zwolniono przycisk)."
+
+      - conditions:
+          - condition: trigger
+            id: on_double
+        sequence: !input on_double_action
+
+      - conditions:
+          - condition: trigger
+            id: off_double
+        sequence: !input off_double_action
+
+      - conditions:
+          - condition: trigger
+            id: on_triple
+        sequence: !input on_triple_action
+
+      - conditions:
+          - condition: trigger
+            id: off_triple
+        sequence: !input off_triple_action
