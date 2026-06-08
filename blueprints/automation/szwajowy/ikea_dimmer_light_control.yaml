@@ -816,12 +816,13 @@ actions:
                 # Zatrzymaj pętlę gdy: przyszło zdarzenie puszczenia LUB osiągnięto maks. jasność.
                 # `until` jest ewaluowane po sekwencji — `wait` jest już zdefiniowane.
                 - >
-                  {% set max_b = light_entities
-                                | select('is_state', 'on')
-                                | map('state_attr', 'brightness')
-                                | reject('none')
-                                | map('int', 0)
-                                | max(default=0) %}
+                  {% set bs = light_entities
+                              | select('is_state', 'on')
+                              | map('state_attr', 'brightness')
+                              | reject('none')
+                              | map('int', 0)
+                              | list %}
+                  {% set max_b = (bs | max) if (bs | length) > 0 else 0 %}
                   {{ wait.trigger != none or max_b >= v_max_brightness }}
 
           # --- Krok 3: dodatkowe akcje użytkownika po zakończeniu hold ---
@@ -863,20 +864,22 @@ actions:
                 # `until` jest ewaluowane po sekwencji — `wait` jest już zdefiniowane.
                 - >
                   {% set on_lights = light_entities | select('is_state', 'on') | list %}
-                  {% set min_b = (on_lights | map('state_attr', 'brightness') | reject('none') | map('int', 9999) | min(default=9999)) if on_lights | length > 0 else 0 %}
-                  {{ wait.trigger != none or on_lights | length == 0 or min_b <= v_min_brightness }}
+                  {% set bs = on_lights | map('state_attr', 'brightness') | reject('none') | map('int', 0) | list %}
+                  {% set min_b = (bs | min) if (bs | length) > 0 else 0 %}
+                  {{ wait.trigger != none or (on_lights | length) == 0 or min_b <= v_min_brightness }}
 
           # --- Krok 2: jeśli opcja włączona i osiągnięto minimum → wyłącz ---
           - if:
               - "{{ v_turn_off_at_min }}"
               - >
-                {% set min_b = light_entities
-                              | select('is_state', 'on')
-                              | map('state_attr', 'brightness')
-                              | reject('none')
-                              | map('int', 9999)
-                              | min(default=9999) %}
-                {{ min_b <= v_min_brightness }}
+                {% set bs = light_entities
+                            | select('is_state', 'on')
+                            | map('state_attr', 'brightness')
+                            | reject('none')
+                            | map('int', 0)
+                            | list %}
+                {% set min_b = (bs | min) if (bs | length) > 0 else 0 %}
+                {{ (bs | length) > 0 and min_b <= v_min_brightness }}
             then:
               - action: light.turn_off
                 target: !input target_lights
