@@ -405,16 +405,19 @@ blueprint:
           name: "⏱️ Okno wykrywania multi-tap"
           description: >
             Maksymalny czas między kolejnymi klikami, aby zostały rozpoznane jako multi-tap (w milisekundach).
-            ⚠️ Jeśli klikasz „spokojnie" (odstęp >1s) podnieś tę wartość do **1000–1500 ms**,
-            inaczej drugie kliknięcie zostanie potraktowane jako kolejny pojedynczy klik.
+            ⚠️ Piloty Zigbee (zwłaszcza IKEA RODRET / TRADFRI) wprowadzają ~800–1200 ms opóźnienia
+            między fizycznym klikiem a dotarciem eventu do HA (debounce + mesh + battery sleep).
+            Domyślna wartość 1500 ms pokrywa większość pilotów. Jeśli double-tap nie działa
+            mimo szybkiego klikania — zwiększ do **2000 ms**. Zmniejszaj tylko gdy pilot jest
+            wyjątkowo responsywny.
             ⚠️ Wartość wpływa też na opóźnienie reakcji single-tap (blueprint czeka pełne okno
             zanim odpali akcję pojedynczego klika).
-          default: 600
+          default: 1500
           selector:
             number:
               min: 200
-              max: 2000
-              step: 50
+              max: 3000
+              step: 100
               unit_of_measurement: "ms"
               mode: slider
 
