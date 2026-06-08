@@ -788,12 +788,32 @@ actions:
                   transition: 0
 
           # --- Krok 2: pętla zwiększania jasności do puszczenia przycisku ---
+          # Używamy absolutnej jasności z clampingiem zamiast brightness_step,
+          # żeby uniknąć sytuacji gdzie sterownik żarówki przy brightness=0/255 wyłącza/zatrzymuje lampę.
           - repeat:
               sequence:
+                - variables:
+                    cur_max: >
+                      {% set bs = light_entities
+                                  | select('is_state', 'on')
+                                  | map('state_attr', 'brightness')
+                                  | reject('none')
+                                  | map('int', 0)
+                                  | list %}
+                      {{ (bs | max) if (bs | length) > 0 else v_min_brightness }}
+                    next_b: >
+                      {% set bs = light_entities
+                                  | select('is_state', 'on')
+                                  | map('state_attr', 'brightness')
+                                  | reject('none')
+                                  | map('int', 0)
+                                  | list %}
+                      {% set cur = (bs | max) if (bs | length) > 0 else v_min_brightness %}
+                      {{ [cur + v_brightness_step, v_max_brightness] | min }}
                 - action: light.turn_on
                   target: !input target_lights
                   data:
-                    brightness_step: "{{ v_brightness_step }}"
+                    brightness: "{{ next_b }}"
                     transition: 0
 
                 - wait_for_trigger:
@@ -834,12 +854,24 @@ actions:
           - "{{ trigger.id == 'hold_off_start' }}"
         sequence:
           # --- Pętla zmniejszania jasności do puszczenia przycisku ---
+          # Używamy absolutnej jasności z clampingiem do v_min_brightness,
+          # żeby zapobiec wyłączeniu lampy przez sterownik gdy step zszedłby do 0.
           - repeat:
               sequence:
+                - variables:
+                    next_b: >
+                      {% set bs = light_entities
+                                  | select('is_state', 'on')
+                                  | map('state_attr', 'brightness')
+                                  | reject('none')
+                                  | map('int', 0)
+                                  | list %}
+                      {% set cur = (bs | min) if (bs | length) > 0 else v_min_brightness %}
+                      {{ [cur - v_brightness_step, v_min_brightness] | max }}
                 - action: light.turn_on
                   target: !input target_lights
                   data:
-                    brightness_step: "{{ 0 - v_brightness_step }}"
+                    brightness: "{{ next_b }}"
                     transition: 0
 
                 - wait_for_trigger:
