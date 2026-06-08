@@ -392,7 +392,11 @@ blueprint:
           name: "👆👆👆 Włącz wykrywanie potrójnego klika"
           description: >
             ⚠️ Wymaga również włączenia podwójnego klika.
-            Powoduje dodatkowe opóźnienie podwójnego klika o czas okna wykrywania.
+            ⚠️ **Ograniczenie**: ze względu na `mode: restart` blueprint nie potrafi
+            niezawodnie odróżnić 2-go klika od 3-go bez trwałego stanu. Po włączeniu tej opcji
+            **każda szybka seria klikni\u0119\u0107** (zar\u00f3wno 2x jak i 3x) odpali akcj\u0119 *triple-tap*
+            (a *double-tap* nie odpali). Je\u015bli chcesz osobnych akcji dla 2x i 3x \u2014 zostaw t\u0119 opcj\u0119
+            wy\u0142\u0105czon\u0105 i u\u017cyj tylko akcji *double-tap*.
           default: false
           selector:
             boolean:
@@ -650,6 +654,22 @@ actions:
         {% endif %}
         {{ d }}
 
+      # --- Detekcja multi-tap (double / triple) ---
+      # `mode: restart` powoduje, że każde kolejne kliknięcie KASUJE bieżący run i
+      # startuje nowy. Klasyczny `wait_for_trigger` przestaje wtedy działać jako
+      # licznik kliknięć (drugie kliknięcie zostaje przechwycone przez trigger
+      # automatyzacji, zanim `wait_for_trigger` zdąży je zarejestrować). Dlatego
+      # rozpoznajemy „kolejne kliknięcie w serii” porownując teraz z
+      # `this.attributes.last_triggered` (czas poprzedniego triggera).
+      ms_since_last_trigger: >
+        {% set last = this.attributes.last_triggered %}
+        {% if last %}
+          {{ ((now() - last).total_seconds() * 1000) | int }}
+        {% else %}
+          99999
+        {% endif %}
+      is_multi_tap_continuation: "{{ ms_since_last_trigger < v_multi_tap_window }}"
+
   # ---------------------------------------------------------------------------
   # 2. Opcjonalne logowanie zdarzenia w dzienniku.
   # ---------------------------------------------------------------------------
@@ -684,65 +704,43 @@ actions:
                         target: !input target_lights
                         data: "{{ turn_on_data }}"
 
-              # --- Multi-tap włączone: czekaj na drugi klik ---
+              # --- Multi-tap włączone: detekcja przez porównanie czasu od poprzedniego triggera ---
+              # `mode: restart` powoduje, że drugie kliknięcie kasuje run #1 i
+              # startuje run #2. W run #2 widzimy `is_multi_tap_continuation == true`
+              # (poprzedni trigger był mniej niż `multi_tap_window` ms temu) i od razu
+              # uruchamiamy akcję double/triple tap. Run #1 wcześniej czeka pełne okno
+              # `multi_tap_window` i tylko jeśli nie został anulowany — odpala single tap.
               - conditions:
                   - "{{ multi_tap_enabled }}"
                 sequence:
-                  - wait_for_trigger:
-                      - trigger: device
-                        domain: zha
-                        device_id: !input remote
-                        type: "remote_button_short_press"
-                        subtype: "turn_on"
-                      - trigger: device
-                        domain: mqtt
-                        device_id: !input remote
-                        type: "action"
-                        subtype: "on"
-                    timeout:
-                      milliseconds: !input multi_tap_window
-                    continue_on_timeout: true
-
                   - choose:
-                      # --- Brak drugiego klika → single tap (custom lub built-in default) ---
+                      # --- Kolejne kliknięcie w serii (2-gie lub późniejsze) ---
                       - conditions:
-                          - "{{ wait.trigger == none }}"
+                          - "{{ is_multi_tap_continuation }}"
                         sequence:
                           - choose:
-                              - conditions: "{{ (v_on_single_tap_action | length) > 0 }}"
-                                sequence: !input on_single_tap_action
-                            default:
-                              - action: light.turn_on
-                                target: !input target_lights
-                                data: "{{ turn_on_data }}"
-
-                      # --- Drugi klik, triple wyłączony → double tap ---
-                      - conditions:
-                          - "{{ wait.trigger != none and not v_enable_triple_tap }}"
-                        sequence: !input on_double_tap_action
-
-                      # --- Drugi klik, triple włączony → czekaj na trzeci ---
-                      - conditions:
-                          - "{{ wait.trigger != none and v_enable_triple_tap }}"
-                        sequence:
-                          - wait_for_trigger:
-                              - trigger: device
-                                domain: zha
-                                device_id: !input remote
-                                type: "remote_button_short_press"
-                                subtype: "turn_on"
-                              - trigger: device
-                                domain: mqtt
-                                device_id: !input remote
-                                type: "action"
-                                subtype: "on"
-                            timeout:
-                              milliseconds: !input multi_tap_window
-                            continue_on_timeout: true
-                          - choose:
-                              - conditions: "{{ wait.trigger == none }}"
-                                sequence: !input on_double_tap_action
-                            default: !input on_triple_tap_action
+                              # Triple-tap włączony i akcja zdefiniowana — traktujemy
+                              # każdą szybką serię jako triple. Ograniczenie: bez trwałego
+                              # stanu nie da się odróżnić drugiego kliknięcia od trzeciego,
+                              # więc przy włączonym triple-tap akcja double-tap nie odpali.
+                              - conditions:
+                                  - "{{ v_enable_triple_tap }}"
+                                  - "{{ (v_on_triple_tap_action | length) > 0 }}"
+                                sequence: !input on_triple_tap_action
+                            default: !input on_double_tap_action
+                    default:
+                      # --- Pierwsze kliknięcie w serii ---
+                      # Czekamy pełne okno. Jeśli kolejne kliknięcie nadejdzie,
+                      # `mode: restart` przerwie ten delay zanim odpali się single tap.
+                      - delay:
+                          milliseconds: !input multi_tap_window
+                      - choose:
+                          - conditions: "{{ (v_on_single_tap_action | length) > 0 }}"
+                            sequence: !input on_single_tap_action
+                        default:
+                          - action: light.turn_on
+                            target: !input target_lights
+                            data: "{{ turn_on_data }}"
 
       # ======================== PRESS OFF (klik WYŁĄCZ) ======================
       - conditions:
@@ -762,62 +760,33 @@ actions:
                         data:
                           transition: "{{ v_transition_on_press }}"
 
+              # --- Multi-tap włączone: detekcja przez porównanie czasu od poprzedniego triggera ---
               - conditions:
                   - "{{ multi_tap_enabled }}"
                 sequence:
-                  - wait_for_trigger:
-                      - trigger: device
-                        domain: zha
-                        device_id: !input remote
-                        type: "remote_button_short_press"
-                        subtype: "turn_off"
-                      - trigger: device
-                        domain: mqtt
-                        device_id: !input remote
-                        type: "action"
-                        subtype: "off"
-                    timeout:
-                      milliseconds: !input multi_tap_window
-                    continue_on_timeout: true
-
                   - choose:
+                      # --- Kolejne kliknięcie w serii (2-gie lub późniejsze) ---
                       - conditions:
-                          - "{{ wait.trigger == none }}"
+                          - "{{ is_multi_tap_continuation }}"
                         sequence:
                           - choose:
-                              - conditions: "{{ (v_off_single_tap_action | length) > 0 }}"
-                                sequence: !input off_single_tap_action
-                            default:
-                              - action: light.turn_off
-                                target: !input target_lights
-                                data:
-                                  transition: "{{ v_transition_on_press }}"
-
-                      - conditions:
-                          - "{{ wait.trigger != none and not v_enable_triple_tap }}"
-                        sequence: !input off_double_tap_action
-
-                      - conditions:
-                          - "{{ wait.trigger != none and v_enable_triple_tap }}"
-                        sequence:
-                          - wait_for_trigger:
-                              - trigger: device
-                                domain: zha
-                                device_id: !input remote
-                                type: "remote_button_short_press"
-                                subtype: "turn_off"
-                              - trigger: device
-                                domain: mqtt
-                                device_id: !input remote
-                                type: "action"
-                                subtype: "off"
-                            timeout:
-                              milliseconds: !input multi_tap_window
-                            continue_on_timeout: true
-                          - choose:
-                              - conditions: "{{ wait.trigger == none }}"
-                                sequence: !input off_double_tap_action
-                            default: !input off_triple_tap_action
+                              - conditions:
+                                  - "{{ v_enable_triple_tap }}"
+                                  - "{{ (v_off_triple_tap_action | length) > 0 }}"
+                                sequence: !input off_triple_tap_action
+                            default: !input off_double_tap_action
+                    default:
+                      # --- Pierwsze kliknięcie w serii ---
+                      - delay:
+                          milliseconds: !input multi_tap_window
+                      - choose:
+                          - conditions: "{{ (v_off_single_tap_action | length) > 0 }}"
+                            sequence: !input off_single_tap_action
+                        default:
+                          - action: light.turn_off
+                            target: !input target_lights
+                            data:
+                              transition: "{{ v_transition_on_press }}"
 
       # ======================== HOLD ON START (przytrzymanie WŁĄCZ) ===========
       - conditions:
