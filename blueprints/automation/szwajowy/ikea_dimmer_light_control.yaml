@@ -607,6 +607,10 @@ actions:
         {{ ns.ents | unique | list }}
 
       # Dane do `light.turn_on` przy domyślnym włączaniu (priorytet: night > default > pusto).
+      # Dodatkowo: jeśli wszystkie lampy są zgaszone (lub mają jasność < v_min_brightness),
+      # zawsze ustaw `brightness: v_min_brightness`, żeby driver żarówki nie zinterpretował
+      # bardzo niskiej „ostatniej jasności” jako off i żeby press_on zawsze faktycznie
+      # zapalił lampę, nawet jeśli ostatni hold_off zostawił ją praktycznie zgaszoną.
       turn_on_data: >
         {% set d = {} %}
         {% if is_night_mode %}
@@ -620,6 +624,18 @@ actions:
             {% set d = dict(d, color_temp_kelvin=v_default_color_temp_kelvin) %}
           {% elif v_default_color_rgb != [0, 0, 0] %}
             {% set d = dict(d, rgb_color=v_default_color_rgb) %}
+          {% endif %}
+        {% endif %}
+        {% if 'brightness' not in d %}
+          {% set on_lights = light_entities | select('is_state', 'on') | list %}
+          {% set bs = on_lights
+                      | map('state_attr', 'brightness')
+                      | reject('none')
+                      | map('int', 0)
+                      | list %}
+          {% set max_b = (bs | max) if (bs | length) > 0 else 0 %}
+          {% if (on_lights | length) == 0 or max_b < v_min_brightness %}
+            {% set d = dict(d, brightness=v_min_brightness) %}
           {% endif %}
         {% endif %}
         {% if v_transition_on_press | float(0) > 0 %}
@@ -940,6 +956,21 @@ actions:
               - action: light.turn_off
                 target: !input target_lights
                 data:
+                  transition: 0
+
+          # --- Krok 2b: jeśli opcja v_turn_off_at_min jest WYŁĄCZONA, ale driver
+          #     żarówki i tak zgasił lampę (np. brightness=1 traktowane jako off),
+          #     przywróć ją natychmiast z brightness = v_min_brightness, żeby nie
+          #     zostać z lampą której press_on nie odpali (brak "ostatniej
+          #     jasności" w pamięci żarówki).
+          - if:
+              - "{{ not v_turn_off_at_min }}"
+              - "{{ light_entities | select('is_state', 'on') | list | length == 0 }}"
+            then:
+              - action: light.turn_on
+                target: !input target_lights
+                data:
+                  brightness: "{{ v_min_brightness }}"
                   transition: 0
 
           # --- Krok 3: dodatkowe akcje użytkownika po zakończeniu hold ---
