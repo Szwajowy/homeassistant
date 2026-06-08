@@ -51,43 +51,21 @@ blueprint:
       icon: mdi:remote
       description: "Wybierz pilot i światła, którymi chcesz sterować."
       input:
-        integration:
-          name: "🔌 Integracja Zigbee"
-          description: >
-            Wybierz, jak Twój pilot jest podłączony do Home Assistant.
-            ZHA = natywna integracja Zigbee.
-            Z2MQTT = Zigbee2MQTT (przez MQTT).
-          default: zha
-          selector:
-            select:
-              mode: dropdown
-              options:
-                - { label: "ZHA (Zigbee Home Automation)", value: "zha" }
-                - { label: "Zigbee2MQTT", value: "z2mqtt" }
-
         remote:
-          name: "🎛️ Pilot IKEA (tylko dla ZHA)"
+          name: "🎛️ Pilot IKEA"
           description: >
-            Wybierz pilot z listy urządzeń ZHA.
-            ⚠️ Wymagane gdy integracja = ZHA.
-            Dla Z2MQTT pozostaw puste — pole jest wtedy ignorowane.
-          default: ""
+            Wybierz pilot RODRET (E2201) lub TRADFRI on/off (E1743) z listy urządzeń.
+            Obsługiwane są urządzenia z **ZHA** i **Zigbee2MQTT** — integracja jest wykrywana automatycznie
+            (w blueprintcie zdefiniowane są triggery dla obu, aktywne są te które pasują do urządzenia).
           selector:
             device:
               filter:
                 - integration: zha
                   manufacturer: "IKEA of Sweden"
-
-        mqtt_topic:
-          name: "📡 Topic MQTT (tylko dla Z2MQTT)"
-          description: >
-            Wpisz pełny topic MQTT pilota.
-            Przykład: `zigbee2mqtt/pilot_salon`.
-            ⚠️ Wymagane gdy integracja = Zigbee2MQTT.
-            Dla ZHA pozostaw wartość domyślną (`zigbee2mqtt/_not_configured`) — pole jest ignorowane.
-          default: "zigbee2mqtt/_not_configured"
-          selector:
-            text:
+                - integration: mqtt
+                  manufacturer: "IKEA"
+                - integration: mqtt
+                  manufacturer: "IKEA of Sweden"
 
         target_lights:
           name: "💡 Oświetlenie do sterowania"
@@ -464,7 +442,8 @@ max_exceeded: silent
 # =============================================================================
 # TRIGGERY — wszystkie zdarzenia z pilota (ZHA + Z2MQTT).
 # Każdy trigger ma unikalny `id` używany w sekcji actions.
-# Triggery z nieskonfigurowanej integracji po prostu nigdy nie odpalą.
+# Dla danego urządzenia aktywne są tylko triggery jego integracji —
+# pozostałe nigdy nie odpalą (HA tolerancyjnie obsługuje niedopasowane device triggers).
 # =============================================================================
 triggers:
   # ----- ZHA: pojedyncze klik -----
@@ -497,30 +476,34 @@ triggers:
     subtype: "dim_down"
     id: hold_off_start
 
-  # ----- Z2MQTT: pojedyncze klik -----
-  - trigger: mqtt
-    topic: !input mqtt_topic
-    payload: "on"
-    value_template: "{{ value_json.action }}"
+  # ----- Z2MQTT: pojedyncze klik (MQTT device triggers z discovery) -----
+  - trigger: device
+    domain: mqtt
+    device_id: !input remote
+    type: "action"
+    subtype: "on"
     id: press_on
 
-  - trigger: mqtt
-    topic: !input mqtt_topic
-    payload: "off"
-    value_template: "{{ value_json.action }}"
+  - trigger: device
+    domain: mqtt
+    device_id: !input remote
+    type: "action"
+    subtype: "off"
     id: press_off
 
   # ----- Z2MQTT: początek przytrzymania -----
-  - trigger: mqtt
-    topic: !input mqtt_topic
-    payload: "brightness_move_up"
-    value_template: "{{ value_json.action }}"
+  - trigger: device
+    domain: mqtt
+    device_id: !input remote
+    type: "action"
+    subtype: "brightness_move_up"
     id: hold_on_start
 
-  - trigger: mqtt
-    topic: !input mqtt_topic
-    payload: "brightness_move_down"
-    value_template: "{{ value_json.action }}"
+  - trigger: device
+    domain: mqtt
+    device_id: !input remote
+    type: "action"
+    subtype: "brightness_move_down"
     id: hold_off_start
 
 # =============================================================================
@@ -537,8 +520,6 @@ actions:
   # ---------------------------------------------------------------------------
   - variables:
       # --- Wartości inputów wymagane w szablonach ---
-      v_integration: !input integration
-      v_mqtt_topic: !input mqtt_topic
       v_brightness_step: !input brightness_step
       v_brightness_step_delay: !input brightness_step_delay
       v_min_brightness: !input min_brightness
@@ -666,10 +647,11 @@ actions:
                         device_id: !input remote
                         type: "remote_button_short_press"
                         subtype: "turn_on"
-                      - trigger: mqtt
-                        topic: !input mqtt_topic
-                        payload: "on"
-                        value_template: "{{ value_json.action }}"
+                      - trigger: device
+                        domain: mqtt
+                        device_id: !input remote
+                        type: "action"
+                        subtype: "on"
                     timeout:
                       milliseconds: !input multi_tap_window
                     continue_on_timeout: true
@@ -702,10 +684,11 @@ actions:
                                 device_id: !input remote
                                 type: "remote_button_short_press"
                                 subtype: "turn_on"
-                              - trigger: mqtt
-                                topic: !input mqtt_topic
-                                payload: "on"
-                                value_template: "{{ value_json.action }}"
+                              - trigger: device
+                                domain: mqtt
+                                device_id: !input remote
+                                type: "action"
+                                subtype: "on"
                             timeout:
                               milliseconds: !input multi_tap_window
                             continue_on_timeout: true
@@ -741,10 +724,11 @@ actions:
                         device_id: !input remote
                         type: "remote_button_short_press"
                         subtype: "turn_off"
-                      - trigger: mqtt
-                        topic: !input mqtt_topic
-                        payload: "off"
-                        value_template: "{{ value_json.action }}"
+                      - trigger: device
+                        domain: mqtt
+                        device_id: !input remote
+                        type: "action"
+                        subtype: "off"
                     timeout:
                       milliseconds: !input multi_tap_window
                     continue_on_timeout: true
@@ -775,10 +759,11 @@ actions:
                                 device_id: !input remote
                                 type: "remote_button_short_press"
                                 subtype: "turn_off"
-                              - trigger: mqtt
-                                topic: !input mqtt_topic
-                                payload: "off"
-                                value_template: "{{ value_json.action }}"
+                              - trigger: device
+                                domain: mqtt
+                                device_id: !input remote
+                                type: "action"
+                                subtype: "off"
                             timeout:
                               milliseconds: !input multi_tap_window
                             continue_on_timeout: true
@@ -819,10 +804,11 @@ actions:
                       type: "remote_button_long_release"
                       subtype: "dim_up"
                     # Z2MQTT: stop ściemniania
-                    - trigger: mqtt
-                      topic: !input mqtt_topic
-                      payload: "brightness_stop"
-                      value_template: "{{ value_json.action }}"
+                    - trigger: device
+                      domain: mqtt
+                      device_id: !input remote
+                      type: "action"
+                      subtype: "brightness_stop"
                   timeout:
                     milliseconds: !input brightness_step_delay
                   continue_on_timeout: true
@@ -864,10 +850,11 @@ actions:
                       type: "remote_button_long_release"
                       subtype: "dim_down"
                     # Z2MQTT: stop ściemniania
-                    - trigger: mqtt
-                      topic: !input mqtt_topic
-                      payload: "brightness_stop"
-                      value_template: "{{ value_json.action }}"
+                    - trigger: device
+                      domain: mqtt
+                      device_id: !input remote
+                      type: "action"
+                      subtype: "brightness_stop"
                   timeout:
                     milliseconds: !input brightness_step_delay
                   continue_on_timeout: true

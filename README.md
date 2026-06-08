@@ -48,13 +48,17 @@ oraz **IKEA TRADFRI on/off switch (E1743)** w obu integracjach Zigbee
 
 #### 🛠️ Konfiguracja
 Wszystkie ustawienia pogrupowane w 7 zakładek:
-1. **📱 Urządzenie i oświetlenie** — wybór pilota + integracji + świateł
+1. **📱 Urządzenie i oświetlenie** — wybór pilota (ZHA lub Z2MQTT) + świateł do sterowania
 2. **🟢 Przycisk WŁĄCZ** — akcje dla każdego rodzaju naciśnięcia
 3. **🔴 Przycisk WYŁĄCZ** — akcje dla każdego rodzaju naciśnięcia
 4. **💡 Jasność i ściemnianie** — krok, prędkość, min/max, zachowanie skrajnych wartości
 5. **🌙 Tryb nocny** — harmonogram + jasność nocna + temp. barwowa
 6. **🎨 Domyślne włączenie** — jasność/kolor/temp. przy domyślnym włączeniu
 7. **🔧 Zaawansowane** — multi-tap, blokada, logowanie, smooth transition
+
+✨ **Auto-detekcja integracji**: blueprint definiuje równolegle triggery ZHA i MQTT —
+aktywne są tylko te które odpowiadają wybranemu urządzeniu. Żadnych przełączników ani topiców
+MQTT do wpisywania.
 
 #### 📥 Import do Home Assistanta
 1. **Otwórz HA** → Ustawienia → Automatyzacje i sceny → **Blueprinty**
@@ -72,20 +76,25 @@ do automatycznego sprawdzania nowych wersji blueprintów. Pole `source_url` w bl
 wskazuje na ten plik, więc updater pobierze najnowszą wersję bez ręcznej interwencji.
 
 #### 🧪 Wsparcie i debugowanie
-- ⚠️ **Z2MQTT**: pozostaw pole "Pilot IKEA" puste i wpisz pełny topic MQTT (np. `zigbee2mqtt/pilot_salon`)
-- ⚠️ **ZHA**: pozostaw pole "Topic MQTT" puste i wybierz pilot z listy urządzeń
+- 📦 **Z2MQTT**: pilot musi być zarejestrowany w HA jako urządzenie MQTT (Z2MQTT robi to
+  automatycznie przez MQTT discovery — wymagane jest, aby pilot miał exposed `action`)
+- 📦 **ZHA**: pilot powinien być sparowany w UI ZHA
+- 🔍 W obu przypadkach wybór odbywa się z jednego pola "Pilot IKEA" — lista jest filtrowana
+  do urządzeń IKEA z integracji ZHA lub MQTT
 - 📝 W przypadku problemów włącz **„Loguj zdarzenia w dzienniku"** w sekcji `🔧 Zaawansowane`
   — każde naciśnięcie pilota zostanie zalogowane wraz z informacją o trybie nocnym i multi-tap
 
 #### 🗺️ Mapowanie zdarzeń pilota
-| Akcja           | ZHA `type` / `subtype`                                | Z2MQTT `action`         |
-|-----------------|-------------------------------------------------------|-------------------------|
-| Klik WŁĄCZ      | `remote_button_short_press` / `turn_on`               | `on`                    |
-| Klik WYŁĄCZ     | `remote_button_short_press` / `turn_off`              | `off`                   |
-| Hold WŁĄCZ      | `remote_button_long_press` / `dim_up`                 | `brightness_move_up`    |
-| Hold WYŁĄCZ     | `remote_button_long_press` / `dim_down`               | `brightness_move_down`  |
-| Puszczenie WŁĄCZ| `remote_button_long_release` / `dim_up`               | `brightness_stop`       |
-| Puszczenie WYŁĄCZ| `remote_button_long_release` / `dim_down`            | `brightness_stop`       |
+Blueprint używa **device triggers** dla obu integracji — nie ma potrzeby ręcznego wpisywania topiców MQTT.
+
+| Akcja            | ZHA (`domain: zha`)                                      | Z2MQTT (`domain: mqtt`)                  |
+|------------------|----------------------------------------------------------|------------------------------------------|
+| Klik WŁĄCZ       | `type: remote_button_short_press`, `subtype: turn_on`    | `type: action`, `subtype: on`            |
+| Klik WYŁĄCZ      | `type: remote_button_short_press`, `subtype: turn_off`   | `type: action`, `subtype: off`           |
+| Hold WŁĄCZ       | `type: remote_button_long_press`, `subtype: dim_up`      | `type: action`, `subtype: brightness_move_up`   |
+| Hold WYŁĄCZ      | `type: remote_button_long_press`, `subtype: dim_down`    | `type: action`, `subtype: brightness_move_down` |
+| Puszczenie WŁĄCZ | `type: remote_button_long_release`, `subtype: dim_up`    | `type: action`, `subtype: brightness_stop`      |
+| Puszczenie WYŁĄCZ| `type: remote_button_long_release`, `subtype: dim_down`  | `type: action`, `subtype: brightness_stop`      |
 
 ⚠️ **Double/triple tap** nie są wspierane natywnie przez te piloty — blueprint wykrywa je
 samodzielnie poprzez okno czasowe (`multi_tap_window`, default 400 ms).
