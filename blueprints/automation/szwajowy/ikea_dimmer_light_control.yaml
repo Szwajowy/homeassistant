@@ -812,10 +812,9 @@ actions:
                   timeout:
                     milliseconds: !input brightness_step_delay
                   continue_on_timeout: true
-              while:
-                # Pętla działa dopóki nie przyjdzie zdarzenie puszczenia
-                # ORAZ przynajmniej jedno światło nie osiągnęło maks. jasności.
-                - "{{ wait.trigger == none }}"
+              until:
+                # Zatrzymaj pętlę gdy: przyszło zdarzenie puszczenia LUB osiągnięto maks. jasność.
+                # `until` jest ewaluowane po sekwencji — `wait` jest już zdefiniowane.
                 - >
                   {% set max_b = light_entities
                                 | select('is_state', 'on')
@@ -823,7 +822,7 @@ actions:
                                 | reject('none')
                                 | map('int', 0)
                                 | max(default=0) %}
-                  {{ max_b < v_max_brightness }}
+                  {{ wait.trigger != none or max_b >= v_max_brightness }}
 
           # --- Krok 3: dodatkowe akcje użytkownika po zakończeniu hold ---
           - choose: []
@@ -858,14 +857,14 @@ actions:
                   timeout:
                     milliseconds: !input brightness_step_delay
                   continue_on_timeout: true
-              while:
-                # Pętla działa dopóki nie przyjdzie zdarzenie puszczenia
-                # ORAZ przynajmniej jedno światło jest włączone i ma jasność > min.
-                - "{{ wait.trigger == none }}"
+              until:
+                # Zatrzymaj pętlę gdy: przyszło zdarzenie puszczenia LUB wszystkie światła zgaszone
+                # LUB najjasniejsze światło spadło do/poniżej min. jasności.
+                # `until` jest ewaluowane po sekwencji — `wait` jest już zdefiniowane.
                 - >
                   {% set on_lights = light_entities | select('is_state', 'on') | list %}
                   {% set min_b = (on_lights | map('state_attr', 'brightness') | reject('none') | map('int', 9999) | min(default=9999)) if on_lights | length > 0 else 0 %}
-                  {{ on_lights | length > 0 and min_b > v_min_brightness }}
+                  {{ wait.trigger != none or on_lights | length == 0 or min_b <= v_min_brightness }}
 
           # --- Krok 2: jeśli opcja włączona i osiągnięto minimum → wyłącz ---
           - if:
