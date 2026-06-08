@@ -21,11 +21,12 @@ blueprint:
     - 📝 **Logbook** — opcjonalne logowanie akcji w dzienniku zdarzeń
 
     ## 🛠️ Konfiguracja
-    1. Wybierz **integrację** (ZHA lub Z2MQTT)
-    2. Dla **ZHA** — wybierz pilot z listy urządzeń
-    3. Dla **Z2MQTT** — wpisz topic MQTT (np. `zigbee2mqtt/pilot_salon`)
-    4. Wybierz **oświetlenie** do sterowania (encja / grupa / pokój)
-    5. Opcjonalnie skonfiguruj akcje dla każdego przycisku w pozostałych sekcjach
+    1. Wybierz **pilot** z listy urządzeń (działa zarówno dla ZHA jak i Z2MQTT — integracja wykrywana automatycznie).
+    2. Wybierz **oświetlenie** do sterowania (encja / grupa / pokój).
+    3. Opcjonalnie skonfiguruj akcje dla każdego przycisku oraz parametry ściemniania / tryb nocny w pozostałych sekcjach.
+
+    > ℹ️ Z2MQTT jest obsługiwany przez **device triggery MQTT discovery** — nie trzeba podawać
+    > żadnego topica. Pilot wystarczy że jest sparowany i widoczny jako urządzenie MQTT.
 
     ## 📚 Mapowanie zdarzeń
     | Akcja          | ZHA                                            | Z2MQTT                  |
@@ -214,7 +215,13 @@ blueprint:
 
         min_brightness:
           name: "🔅 Minimalna jasność"
-          description: "Najniższa wartość jasności podczas ściemniania w dół (1–100 z 255)."
+          description: >
+            Najniższa wartość jasności podczas ściemniania w dół (1–100 z 255).
+            ⚠️ Wartości **poniżej 5** mogą powodować, że sterownik żarówki (zwłaszcza tani LED)
+            zinterpretuje tak niską jasność jako wyłączenie i fizycznie zgasi lampę.
+            Blueprint w takim wypadku automatycznie przywraca lampę na tę minimalną wartość
+            (gdy opcja „Wyłącz przy minimum” jest WYŁĄCZONA), ale efektem może być krótkie
+            mignięcie. Jeśli zauważysz takie zachowanie, zwiększ tę wartość do **5–15**.
           default: 5
           selector:
             number:
