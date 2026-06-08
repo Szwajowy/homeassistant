@@ -506,6 +506,30 @@ triggers:
     subtype: "brightness_move_down"
     id: hold_off_start
 
+  # ----- Zwolnienie przycisku (koniec przytrzymania) - ZHA i Z2MQTT -----
+  # Wspólny id `hold_stop` korzysta z `mode: restart`, żeby natychmiast
+  # przerwać pętlę ściemniania i pozostawić lampę na aktualnej jasności.
+  - trigger: device
+    domain: zha
+    device_id: !input remote
+    type: "remote_button_long_release"
+    subtype: "dim_up"
+    id: hold_stop
+
+  - trigger: device
+    domain: zha
+    device_id: !input remote
+    type: "remote_button_long_release"
+    subtype: "dim_down"
+    id: hold_stop
+
+  - trigger: device
+    domain: mqtt
+    device_id: !input remote
+    type: "action"
+    subtype: "brightness_stop"
+    id: hold_stop
+
 # =============================================================================
 # WARUNEK GLOBALNY — opcjonalna blokada wszystkich akcji.
 # =============================================================================
@@ -921,3 +945,11 @@ actions:
           # --- Krok 3: dodatkowe akcje użytkownika po zakończeniu hold ---
           - choose: []
             default: !input off_hold_action
+
+      # ======================== HOLD STOP (zwolnienie przycisku) ==============
+      # Pusta sekwencja — dzięki `mode: restart` to zdarzenie przerywa aktualnie
+      # działającą pętlę hold_on_start/hold_off_start. Lampa zostaje na aktualnej
+      # jasności.
+      - conditions:
+          - "{{ trigger.id == 'hold_stop' }}"
+        sequence: []
