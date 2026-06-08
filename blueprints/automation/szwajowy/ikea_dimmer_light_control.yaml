@@ -69,7 +69,8 @@ blueprint:
           name: "🎛️ Pilot IKEA (tylko dla ZHA)"
           description: >
             Wybierz pilot z listy urządzeń ZHA.
-            ⚠️ Wymagane gdy integracja = ZHA. Dla Z2MQTT pozostaw puste.
+            ⚠️ Wymagane gdy integracja = ZHA.
+            Dla Z2MQTT pozostaw puste — pole jest wtedy ignorowane.
           default: ""
           selector:
             device:
@@ -82,8 +83,9 @@ blueprint:
           description: >
             Wpisz pełny topic MQTT pilota.
             Przykład: `zigbee2mqtt/pilot_salon`.
-            ⚠️ Wymagane gdy integracja = Zigbee2MQTT. Dla ZHA pozostaw puste.
-          default: ""
+            ⚠️ Wymagane gdy integracja = Zigbee2MQTT.
+            Dla ZHA pozostaw wartość domyślną (`zigbee2mqtt/_not_configured`) — pole jest ignorowane.
+          default: "zigbee2mqtt/_not_configured"
           selector:
             text:
 
