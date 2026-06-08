@@ -1,0 +1,900 @@
+blueprint:
+  name: "🔘 IKEA Dimmer — Sterowanie oświetleniem"
+  description: |
+    ## 🔘 Uniwersalny blueprint do sterowania oświetleniem pilotami IKEA
+
+    Wspierane piloty:
+    - 🟢 **IKEA RODRET Dimmer** (E2201)
+    - 🟢 **IKEA TRADFRI on/off switch** (E1743)
+
+    Wspierane integracje:
+    - 🔌 **ZHA** (Zigbee Home Automation)
+    - 🔌 **Zigbee2MQTT** (Z2MQTT)
+
+    ## ⚡ Funkcje
+    - 💡 **Płynne ściemnianie** — przytrzymaj przycisk, jasność rośnie/maleje aż do puszczenia
+    - 👆 **Wykrywanie multi-tap** — single / double / triple tap z konfigurowalnym oknem czasowym
+    - 🎯 **Dowolne akcje** — każdy slot przycisku akceptuje dowolną sekwencję akcji (sceny, kolory, skrypty)
+    - 🌙 **Tryb nocny** — automatyczna zmiana jasności wg harmonogramu (schedule entity)
+    - 🎨 **Domyślne ustawienia** — kolor / temperatura barwowa / jasność przy włączaniu
+    - 🚫 **Globalna blokada** — opcjonalny warunek blokujący wszystkie akcje
+    - 📝 **Logbook** — opcjonalne logowanie akcji w dzienniku zdarzeń
+
+    ## 🛠️ Konfiguracja
+    1. Wybierz **integrację** (ZHA lub Z2MQTT)
+    2. Dla **ZHA** — wybierz pilot z listy urządzeń
+    3. Dla **Z2MQTT** — wpisz topic MQTT (np. `zigbee2mqtt/pilot_salon`)
+    4. Wybierz **oświetlenie** do sterowania (encja / grupa / pokój)
+    5. Opcjonalnie skonfiguruj akcje dla każdego przycisku w pozostałych sekcjach
+
+    ## 📚 Mapowanie zdarzeń
+    | Akcja          | ZHA                                            | Z2MQTT                  |
+    |----------------|------------------------------------------------|-------------------------|
+    | Klik WŁĄCZ     | `remote_button_short_press` / `turn_on`        | `on`                    |
+    | Klik WYŁĄCZ    | `remote_button_short_press` / `turn_off`       | `off`                   |
+    | Hold WŁĄCZ     | `remote_button_long_press` / `dim_up`          | `brightness_move_up`    |
+    | Hold WYŁĄCZ    | `remote_button_long_press` / `dim_down`        | `brightness_move_down`  |
+    | Puszczenie     | `remote_button_long_release` / `dim_up\|dim_down` | `brightness_stop`    |
+
+  domain: automation
+  author: Szwajowy
+  source_url: https://github.com/Szwajowy/homeassistant/blob/master/blueprints/automation/szwajowy/ikea_dimmer_light_control.yaml
+  homeassistant:
+    min_version: "2024.10.0"
+
+  input:
+    # =========================================================================
+    # 📱 SEKCJA 1: URZĄDZENIE I OŚWIETLENIE
+    # =========================================================================
+    device_and_lights:
+      name: "📱 Urządzenie i oświetlenie"
+      icon: mdi:remote
+      description: "Wybierz pilot i światła, którymi chcesz sterować."
+      input:
+        integration:
+          name: "🔌 Integracja Zigbee"
+          description: >
+            Wybierz, jak Twój pilot jest podłączony do Home Assistant.
+            ZHA = natywna integracja Zigbee.
+            Z2MQTT = Zigbee2MQTT (przez MQTT).
+          default: zha
+          selector:
+            select:
+              mode: dropdown
+              options:
+                - { label: "ZHA (Zigbee Home Automation)", value: "zha" }
+                - { label: "Zigbee2MQTT", value: "z2mqtt" }
+
+        remote:
+          name: "🎛️ Pilot IKEA (tylko dla ZHA)"
+          description: >
+            Wybierz pilot z listy urządzeń ZHA.
+            ⚠️ Wymagane gdy integracja = ZHA. Dla Z2MQTT pozostaw puste.
+          default: ""
+          selector:
+            device:
+              filter:
+                - integration: zha
+                  manufacturer: "IKEA of Sweden"
+
+        mqtt_topic:
+          name: "📡 Topic MQTT (tylko dla Z2MQTT)"
+          description: >
+            Wpisz pełny topic MQTT pilota.
+            Przykład: `zigbee2mqtt/pilot_salon`.
+            ⚠️ Wymagane gdy integracja = Zigbee2MQTT. Dla ZHA pozostaw puste.
+          default: ""
+          selector:
+            text:
+
+        target_lights:
+          name: "💡 Oświetlenie do sterowania"
+          description: >
+            Wybierz światła, którymi pilot ma sterować.
+            Możesz wybrać pojedynczą encję, grupę lub cały pokój.
+          selector:
+            target:
+              entity:
+                - domain: light
+
+    # =========================================================================
+    # 🟢 SEKCJA 2: PRZYCISK WŁĄCZ — AKCJE
+    # =========================================================================
+    button_on:
+      name: "🟢 Przycisk WŁĄCZ — akcje"
+      icon: mdi:plus-circle
+      collapsed: true
+      description: >
+        Skonfiguruj dowolne akcje dla każdego typu naciśnięcia przycisku WŁĄCZ.
+        Pozostaw puste, aby użyć domyślnego zachowania.
+        💡 Domyślnie pojedynczy klik włącza światło, przytrzymanie zwiększa jasność.
+      input:
+        on_single_tap_action:
+          name: "👆 Pojedynczy klik"
+          description: >
+            Akcje wykonywane przy pojedynczym kliknięciu przycisku WŁĄCZ.
+            🔧 Domyślnie: włącza światło (z uwzględnieniem trybu nocnego i domyślnych ustawień).
+          default: []
+          selector:
+            action:
+
+        on_double_tap_action:
+          name: "👆👆 Podwójny klik"
+          description: >
+            Akcje wykonywane przy podwójnym kliknięciu (wymaga włączenia wykrywania w sekcji 🔧 Zaawansowane).
+            🔧 Domyślnie: brak akcji.
+          default: []
+          selector:
+            action:
+
+        on_triple_tap_action:
+          name: "👆👆👆 Potrójny klik"
+          description: >
+            Akcje wykonywane przy potrójnym kliknięciu (wymaga włączenia wykrywania w sekcji 🔧 Zaawansowane).
+            🔧 Domyślnie: brak akcji.
+          default: []
+          selector:
+            action:
+
+        on_hold_action:
+          name: "✋ Przytrzymanie (dodatkowe akcje)"
+          description: >
+            Dodatkowe akcje wykonywane PO zakończeniu zwiększania jasności (gdy puszczono przycisk lub osiągnięto maks. jasność).
+            ⚠️ Główna funkcja przytrzymania (zwiększanie jasności) działa automatycznie i jest niezależna od tej opcji.
+            🔧 Domyślnie: brak dodatkowych akcji.
+          default: []
+          selector:
+            action:
+
+    # =========================================================================
+    # 🔴 SEKCJA 3: PRZYCISK WYŁĄCZ — AKCJE
+    # =========================================================================
+    button_off:
+      name: "🔴 Przycisk WYŁĄCZ — akcje"
+      icon: mdi:minus-circle
+      collapsed: true
+      description: >
+        Skonfiguruj dowolne akcje dla każdego typu naciśnięcia przycisku WYŁĄCZ.
+        Pozostaw puste, aby użyć domyślnego zachowania.
+        💡 Domyślnie pojedynczy klik wyłącza światło, przytrzymanie zmniejsza jasność.
+      input:
+        off_single_tap_action:
+          name: "👆 Pojedynczy klik"
+          description: >
+            Akcje wykonywane przy pojedynczym kliknięciu przycisku WYŁĄCZ.
+            🔧 Domyślnie: wyłącza światło.
+          default: []
+          selector:
+            action:
+
+        off_double_tap_action:
+          name: "👆👆 Podwójny klik"
+          description: >
+            Akcje wykonywane przy podwójnym kliknięciu (wymaga włączenia wykrywania w sekcji 🔧 Zaawansowane).
+            🔧 Domyślnie: brak akcji.
+          default: []
+          selector:
+            action:
+
+        off_triple_tap_action:
+          name: "👆👆👆 Potrójny klik"
+          description: >
+            Akcje wykonywane przy potrójnym kliknięciu (wymaga włączenia wykrywania w sekcji 🔧 Zaawansowane).
+            🔧 Domyślnie: brak akcji.
+          default: []
+          selector:
+            action:
+
+        off_hold_action:
+          name: "✋ Przytrzymanie (dodatkowe akcje)"
+          description: >
+            Dodatkowe akcje wykonywane PO zakończeniu zmniejszania jasności (gdy puszczono przycisk lub osiągnięto min. jasność).
+            ⚠️ Główna funkcja przytrzymania (zmniejszanie jasności) działa automatycznie i jest niezależna od tej opcji.
+            🔧 Domyślnie: brak dodatkowych akcji.
+          default: []
+          selector:
+            action:
+
+    # =========================================================================
+    # 💡 SEKCJA 4: JASNOŚĆ I ŚCIEMNIANIE
+    # =========================================================================
+    brightness:
+      name: "💡 Jasność i ściemnianie"
+      icon: mdi:brightness-6
+      collapsed: true
+      description: "Kontrola krokowa, prędkość ściemniania i zachowanie skrajnych wartości."
+      input:
+        brightness_step:
+          name: "📏 Wielkość kroku jasności"
+          description: >
+            O ile zmienia się jasność w jednej iteracji pętli ściemniania.
+            Skala 0–255 (typowo HA brightness). Większa wartość = szybsze ściemnianie.
+          default: 25
+          selector:
+            number:
+              min: 1
+              max: 100
+              step: 1
+              unit_of_measurement: "/255"
+              mode: slider
+
+        brightness_step_delay:
+          name: "⏱️ Odstęp między krokami"
+          description: >
+            Czas pomiędzy kolejnymi krokami zmiany jasności (w milisekundach).
+            Mniejsza wartość = bardziej płynne ściemnianie, ale większe obciążenie Zigbee.
+          default: 250
+          selector:
+            number:
+              min: 50
+              max: 1000
+              step: 50
+              unit_of_measurement: "ms"
+              mode: slider
+
+        min_brightness:
+          name: "🔅 Minimalna jasność"
+          description: "Najniższa wartość jasności podczas ściemniania w dół (1–100 z 255)."
+          default: 5
+          selector:
+            number:
+              min: 1
+              max: 100
+              step: 1
+              unit_of_measurement: "/255"
+              mode: slider
+
+        max_brightness:
+          name: "🔆 Maksymalna jasność"
+          description: "Najwyższa wartość jasności podczas rozjaśniania (100–255)."
+          default: 255
+          selector:
+            number:
+              min: 100
+              max: 255
+              step: 1
+              unit_of_measurement: "/255"
+              mode: slider
+
+        turn_off_at_min:
+          name: "⚫ Wyłącz światło po osiągnięciu minimum"
+          description: >
+            Gdy włączone — po osiągnięciu minimalnej jasności (przytrzymanie WYŁĄCZ) światło zostanie całkowicie wyłączone.
+            Gdy wyłączone — światło pozostanie świecić na minimalnej jasności.
+          default: false
+          selector:
+            boolean:
+
+        start_from_min_on_hold:
+          name: "🌱 Startuj od minimum przy przytrzymaniu WŁĄCZ"
+          description: >
+            Gdy włączone — przytrzymanie przycisku WŁĄCZ, kiedy światło jest zgaszone, włączy je na minimalnej jasności i zacznie rozjaśniać.
+            Gdy wyłączone — pętla rozjaśniania zacznie naturalnie (od kroku jasności).
+          default: true
+          selector:
+            boolean:
+
+    # =========================================================================
+    # 🌙 SEKCJA 5: TRYB NOCNY
+    # =========================================================================
+    night_mode:
+      name: "🌙 Tryb nocny"
+      icon: mdi:weather-night
+      collapsed: true
+      description: >
+        W trybie nocnym domyślne włączenie światła używa ustawień nocnych zamiast pełnej / zapamiętanej jasności.
+        Tryb nocny aktywuje się, gdy wybrany schedule entity (`schedule.*`) jest w stanie `on`.
+      input:
+        enable_night_mode:
+          name: "🌙 Włącz tryb nocny"
+          description: "Główny przełącznik trybu nocnego."
+          default: false
+          selector:
+            boolean:
+
+        night_mode_schedule:
+          name: "📅 Harmonogram trybu nocnego"
+          description: >
+            Encja typu `schedule.*` (helper Home Assistant) definiująca godziny aktywności trybu nocnego.
+            🔧 Stwórz nowy: Ustawienia → Urządzenia i usługi → Pomocniki → Harmonogram.
+          default: ""
+          selector:
+            entity:
+              filter:
+                - domain: schedule
+
+        night_mode_brightness:
+          name: "🔅 Jasność w trybie nocnym"
+          description: "Jasność, na którą światło włączy się w trybie nocnym (1–255)."
+          default: 50
+          selector:
+            number:
+              min: 1
+              max: 255
+              step: 1
+              unit_of_measurement: "/255"
+              mode: slider
+
+        night_mode_color_temp:
+          name: "🌡️ Temperatura barwowa w trybie nocnym"
+          description: >
+            Temperatura barwowa w Kelvinach dla trybu nocnego (np. 2200 K — bardzo ciepła).
+            Ustaw `0`, aby nie zmieniać temperatury barwowej.
+          default: 0
+          selector:
+            number:
+              min: 0
+              max: 6500
+              step: 50
+              unit_of_measurement: "K"
+
+    # =========================================================================
+    # 🎨 SEKCJA 6: DOMYŚLNE WŁĄCZENIE
+    # =========================================================================
+    default_turn_on:
+      name: "🎨 Domyślne włączenie"
+      icon: mdi:palette
+      collapsed: true
+      description: >
+        Ustawienia używane przy domyślnym włączaniu światła (pojedynczy klik WŁĄCZ).
+        Aktywne tylko, gdy włączysz przełącznik poniżej.
+        ⚠️ Tryb nocny ma wyższy priorytet niż te ustawienia.
+      input:
+        enable_default_state:
+          name: "🎨 Używaj domyślnych ustawień włączenia"
+          description: >
+            Gdy włączone — pojedynczy klik WŁĄCZ ustawia światło na poniższe wartości.
+            Gdy wyłączone — Home Assistant użyje zapamiętanej ostatnio jasności / koloru.
+          default: false
+          selector:
+            boolean:
+
+        default_brightness:
+          name: "🔆 Domyślna jasność"
+          description: "Jasność przy domyślnym włączeniu (1–255)."
+          default: 200
+          selector:
+            number:
+              min: 1
+              max: 255
+              step: 1
+              unit_of_measurement: "/255"
+              mode: slider
+
+        default_color_temp_kelvin:
+          name: "🌡️ Domyślna temperatura barwowa"
+          description: >
+            Temperatura barwowa w Kelvinach (np. 2700 K — ciepła, 4000 K — neutralna, 6500 K — zimna).
+            Ustaw `0`, aby nie zmieniać.
+          default: 0
+          selector:
+            number:
+              min: 0
+              max: 6500
+              step: 50
+              unit_of_measurement: "K"
+
+        default_color_rgb:
+          name: "🎨 Domyślny kolor RGB"
+          description: >
+            Kolor światła przy włączeniu (dla lamp kolorowych).
+            ⚠️ Działa tylko jeśli temperatura barwowa = 0.
+          default: [0, 0, 0]
+          selector:
+            color_rgb:
+
+    # =========================================================================
+    # 🔧 SEKCJA 7: ZAAWANSOWANE
+    # =========================================================================
+    advanced:
+      name: "🔧 Zaawansowane"
+      icon: mdi:cog
+      collapsed: true
+      description: "Wykrywanie multi-tap, blokada globalna, logowanie, smooth transition."
+      input:
+        enable_double_tap:
+          name: "👆👆 Włącz wykrywanie podwójnego klika"
+          description: >
+            ⚠️ Włączenie powoduje opóźnienie pojedynczego klika o czas okna wykrywania (poniżej).
+            Wyłączone = pojedynczy klik wykonywany natychmiast.
+          default: false
+          selector:
+            boolean:
+
+        enable_triple_tap:
+          name: "👆👆👆 Włącz wykrywanie potrójnego klika"
+          description: >
+            ⚠️ Wymaga również włączenia podwójnego klika.
+            Powoduje dodatkowe opóźnienie podwójnego klika o czas okna wykrywania.
+          default: false
+          selector:
+            boolean:
+
+        multi_tap_window:
+          name: "⏱️ Okno wykrywania multi-tap"
+          description: "Maksymalny czas między kolejnymi klikami, aby zostały rozpoznane jako multi-tap (w milisekundach)."
+          default: 400
+          selector:
+            number:
+              min: 200
+              max: 1000
+              step: 50
+              unit_of_measurement: "ms"
+              mode: slider
+
+        transition_on_press:
+          name: "🌊 Czas przejścia przy pojedynczym klik"
+          description: "Płynne przejście jasności / koloru przy domyślnym włączeniu / wyłączeniu światła (w sekundach)."
+          default: 0.3
+          selector:
+            number:
+              min: 0
+              max: 5
+              step: 0.1
+              unit_of_measurement: "s"
+              mode: slider
+
+        enable_logging:
+          name: "📝 Loguj zdarzenia w dzienniku"
+          description: >
+            Gdy włączone — każde naciśnięcie pilota i wykonana akcja zostaną zalogowane w dzienniku zdarzeń HA.
+            Przydatne do debugowania.
+          default: false
+          selector:
+            boolean:
+
+        blocking_condition:
+          name: "🚫 Warunek blokujący (globalna blokada)"
+          description: >
+            Opcjonalny warunek, który musi być spełniony, aby blueprint zareagował na naciśnięcie pilota.
+            Przykład: `condition: state, entity: binary_sensor.away_mode, state: 'off'` — nie reaguj, gdy nikogo nie ma w domu.
+          default: []
+          selector:
+            condition:
+
+# =============================================================================
+# MODE: restart — szybkie kolejne zdarzenia anulują poprzednią pętlę hold.
+# max_exceeded: silent — nie loguj ostrzeżeń o przekroczeniu liczby instancji.
+# =============================================================================
+mode: restart
+max_exceeded: silent
+
+# =============================================================================
+# TRIGGERY — wszystkie zdarzenia z pilota (ZHA + Z2MQTT).
+# Każdy trigger ma unikalny `id` używany w sekcji actions.
+# Triggery z nieskonfigurowanej integracji po prostu nigdy nie odpalą.
+# =============================================================================
+triggers:
+  # ----- ZHA: pojedyncze klik -----
+  - trigger: device
+    domain: zha
+    device_id: !input remote
+    type: "remote_button_short_press"
+    subtype: "turn_on"
+    id: press_on
+
+  - trigger: device
+    domain: zha
+    device_id: !input remote
+    type: "remote_button_short_press"
+    subtype: "turn_off"
+    id: press_off
+
+  # ----- ZHA: początek przytrzymania -----
+  - trigger: device
+    domain: zha
+    device_id: !input remote
+    type: "remote_button_long_press"
+    subtype: "dim_up"
+    id: hold_on_start
+
+  - trigger: device
+    domain: zha
+    device_id: !input remote
+    type: "remote_button_long_press"
+    subtype: "dim_down"
+    id: hold_off_start
+
+  # ----- Z2MQTT: pojedyncze klik -----
+  - trigger: mqtt
+    topic: !input mqtt_topic
+    payload: "on"
+    value_template: "{{ value_json.action }}"
+    id: press_on
+
+  - trigger: mqtt
+    topic: !input mqtt_topic
+    payload: "off"
+    value_template: "{{ value_json.action }}"
+    id: press_off
+
+  # ----- Z2MQTT: początek przytrzymania -----
+  - trigger: mqtt
+    topic: !input mqtt_topic
+    payload: "brightness_move_up"
+    value_template: "{{ value_json.action }}"
+    id: hold_on_start
+
+  - trigger: mqtt
+    topic: !input mqtt_topic
+    payload: "brightness_move_down"
+    value_template: "{{ value_json.action }}"
+    id: hold_off_start
+
+# =============================================================================
+# WARUNEK GLOBALNY — opcjonalna blokada wszystkich akcji.
+# =============================================================================
+conditions: !input blocking_condition
+
+# =============================================================================
+# AKCJE — główna logika blueprintu.
+# =============================================================================
+actions:
+  # ---------------------------------------------------------------------------
+  # 1. Inicjalizacja zmiennych — odczyt inputów i obliczenia pomocnicze.
+  # ---------------------------------------------------------------------------
+  - variables:
+      # --- Wartości inputów wymagane w szablonach ---
+      v_integration: !input integration
+      v_mqtt_topic: !input mqtt_topic
+      v_brightness_step: !input brightness_step
+      v_brightness_step_delay: !input brightness_step_delay
+      v_min_brightness: !input min_brightness
+      v_max_brightness: !input max_brightness
+      v_turn_off_at_min: !input turn_off_at_min
+      v_start_from_min_on_hold: !input start_from_min_on_hold
+      v_enable_night_mode: !input enable_night_mode
+      v_night_mode_schedule: !input night_mode_schedule
+      v_night_mode_brightness: !input night_mode_brightness
+      v_night_mode_color_temp: !input night_mode_color_temp
+      v_enable_default_state: !input enable_default_state
+      v_default_brightness: !input default_brightness
+      v_default_color_temp_kelvin: !input default_color_temp_kelvin
+      v_default_color_rgb: !input default_color_rgb
+      v_multi_tap_window: !input multi_tap_window
+      v_enable_double_tap: !input enable_double_tap
+      v_enable_triple_tap: !input enable_triple_tap
+      v_transition_on_press: !input transition_on_press
+      v_enable_logging: !input enable_logging
+      v_target_lights: !input target_lights
+      v_on_single_tap_action: !input on_single_tap_action
+      v_on_double_tap_action: !input on_double_tap_action
+      v_on_triple_tap_action: !input on_triple_tap_action
+      v_off_single_tap_action: !input off_single_tap_action
+      v_off_double_tap_action: !input off_double_tap_action
+      v_off_triple_tap_action: !input off_triple_tap_action
+
+      # --- Wartości obliczone ---
+
+      # Czy włączone wykrywanie podwójnego / potrójnego klika.
+      multi_tap_enabled: "{{ v_enable_double_tap or v_enable_triple_tap }}"
+
+      # Czy aktywny jest tryb nocny (wymaga schedule entity).
+      is_night_mode: >
+        {% if v_enable_night_mode and v_night_mode_schedule and v_night_mode_schedule != "" %}
+          {{ states(v_night_mode_schedule) == 'on' }}
+        {% else %}
+          {{ false }}
+        {% endif %}
+
+      # Lista wszystkich encji `light.*` w wybranym target (entity / device / area).
+      light_entities: >
+        {% set t = v_target_lights %}
+        {% set ns = namespace(ents=[]) %}
+        {% if t.entity_id is defined %}
+          {% set lst = t.entity_id if (t.entity_id is iterable and t.entity_id is not string) else [t.entity_id] %}
+          {% set ns.ents = ns.ents + (lst | list) %}
+        {% endif %}
+        {% if t.device_id is defined %}
+          {% set lst = t.device_id if (t.device_id is iterable and t.device_id is not string) else [t.device_id] %}
+          {% for d in lst %}
+            {% set ns.ents = ns.ents + (device_entities(d) | select('match', '^light\\.') | list) %}
+          {% endfor %}
+        {% endif %}
+        {% if t.area_id is defined %}
+          {% set lst = t.area_id if (t.area_id is iterable and t.area_id is not string) else [t.area_id] %}
+          {% for a in lst %}
+            {% set ns.ents = ns.ents + (area_entities(a) | select('match', '^light\\.') | list) %}
+          {% endfor %}
+        {% endif %}
+        {{ ns.ents | unique | list }}
+
+      # Dane do `light.turn_on` przy domyślnym włączaniu (priorytet: night > default > pusto).
+      turn_on_data: >
+        {% set d = {} %}
+        {% if is_night_mode %}
+          {% set d = dict(d, brightness=v_night_mode_brightness) %}
+          {% if v_night_mode_color_temp | int(0) > 0 %}
+            {% set d = dict(d, color_temp_kelvin=v_night_mode_color_temp) %}
+          {% endif %}
+        {% elif v_enable_default_state %}
+          {% set d = dict(d, brightness=v_default_brightness) %}
+          {% if v_default_color_temp_kelvin | int(0) > 0 %}
+            {% set d = dict(d, color_temp_kelvin=v_default_color_temp_kelvin) %}
+          {% elif v_default_color_rgb != [0, 0, 0] %}
+            {% set d = dict(d, rgb_color=v_default_color_rgb) %}
+          {% endif %}
+        {% endif %}
+        {% if v_transition_on_press | float(0) > 0 %}
+          {% set d = dict(d, transition=v_transition_on_press) %}
+        {% endif %}
+        {{ d }}
+
+  # ---------------------------------------------------------------------------
+  # 2. Opcjonalne logowanie zdarzenia w dzienniku.
+  # ---------------------------------------------------------------------------
+  - if: "{{ v_enable_logging }}"
+    then:
+      - action: logbook.log
+        data:
+          name: "🔘 IKEA Dimmer"
+          message: >
+            Trigger: {{ trigger.id }} | Tryb nocny: {{ is_night_mode }} | Multi-tap: {{ multi_tap_enabled }}
+
+  # ---------------------------------------------------------------------------
+  # 3. Główna logika — wybór akcji wg trigger.id.
+  # ---------------------------------------------------------------------------
+  - choose:
+
+      # ======================== PRESS ON (klik WŁĄCZ) ========================
+      - conditions:
+          - "{{ trigger.id == 'press_on' }}"
+        sequence:
+          - choose:
+              # --- Multi-tap NIE włączone: wykonaj single tap natychmiast ---
+              - conditions:
+                  - "{{ not multi_tap_enabled }}"
+                sequence:
+                  - choose:
+                      - conditions: "{{ (v_on_single_tap_action | length) > 0 }}"
+                        sequence: !input on_single_tap_action
+                    default:
+                      # 💡 Domyślne zachowanie: włącz światło z night/default state.
+                      - action: light.turn_on
+                        target: !input target_lights
+                        data: "{{ turn_on_data }}"
+
+              # --- Multi-tap włączone: czekaj na drugi klik ---
+              - conditions:
+                  - "{{ multi_tap_enabled }}"
+                sequence:
+                  - wait_for_trigger:
+                      - trigger: device
+                        domain: zha
+                        device_id: !input remote
+                        type: "remote_button_short_press"
+                        subtype: "turn_on"
+                      - trigger: mqtt
+                        topic: !input mqtt_topic
+                        payload: "on"
+                        value_template: "{{ value_json.action }}"
+                    timeout:
+                      milliseconds: !input multi_tap_window
+                    continue_on_timeout: true
+
+                  - choose:
+                      # --- Brak drugiego klika → single tap (custom lub built-in default) ---
+                      - conditions:
+                          - "{{ wait.trigger == none }}"
+                        sequence:
+                          - choose:
+                              - conditions: "{{ (v_on_single_tap_action | length) > 0 }}"
+                                sequence: !input on_single_tap_action
+                            default:
+                              - action: light.turn_on
+                                target: !input target_lights
+                                data: "{{ turn_on_data }}"
+
+                      # --- Drugi klik, triple wyłączony → double tap ---
+                      - conditions:
+                          - "{{ wait.trigger != none and not v_enable_triple_tap }}"
+                        sequence: !input on_double_tap_action
+
+                      # --- Drugi klik, triple włączony → czekaj na trzeci ---
+                      - conditions:
+                          - "{{ wait.trigger != none and v_enable_triple_tap }}"
+                        sequence:
+                          - wait_for_trigger:
+                              - trigger: device
+                                domain: zha
+                                device_id: !input remote
+                                type: "remote_button_short_press"
+                                subtype: "turn_on"
+                              - trigger: mqtt
+                                topic: !input mqtt_topic
+                                payload: "on"
+                                value_template: "{{ value_json.action }}"
+                            timeout:
+                              milliseconds: !input multi_tap_window
+                            continue_on_timeout: true
+                          - choose:
+                              - conditions: "{{ wait.trigger == none }}"
+                                sequence: !input on_double_tap_action
+                            default: !input on_triple_tap_action
+
+      # ======================== PRESS OFF (klik WYŁĄCZ) ======================
+      - conditions:
+          - "{{ trigger.id == 'press_off' }}"
+        sequence:
+          - choose:
+              - conditions:
+                  - "{{ not multi_tap_enabled }}"
+                sequence:
+                  - choose:
+                      - conditions: "{{ (v_off_single_tap_action | length) > 0 }}"
+                        sequence: !input off_single_tap_action
+                    default:
+                      # 💡 Domyślne zachowanie: wyłącz światło z transition.
+                      - action: light.turn_off
+                        target: !input target_lights
+                        data:
+                          transition: "{{ v_transition_on_press }}"
+
+              - conditions:
+                  - "{{ multi_tap_enabled }}"
+                sequence:
+                  - wait_for_trigger:
+                      - trigger: device
+                        domain: zha
+                        device_id: !input remote
+                        type: "remote_button_short_press"
+                        subtype: "turn_off"
+                      - trigger: mqtt
+                        topic: !input mqtt_topic
+                        payload: "off"
+                        value_template: "{{ value_json.action }}"
+                    timeout:
+                      milliseconds: !input multi_tap_window
+                    continue_on_timeout: true
+
+                  - choose:
+                      - conditions:
+                          - "{{ wait.trigger == none }}"
+                        sequence:
+                          - choose:
+                              - conditions: "{{ (v_off_single_tap_action | length) > 0 }}"
+                                sequence: !input off_single_tap_action
+                            default:
+                              - action: light.turn_off
+                                target: !input target_lights
+                                data:
+                                  transition: "{{ v_transition_on_press }}"
+
+                      - conditions:
+                          - "{{ wait.trigger != none and not v_enable_triple_tap }}"
+                        sequence: !input off_double_tap_action
+
+                      - conditions:
+                          - "{{ wait.trigger != none and v_enable_triple_tap }}"
+                        sequence:
+                          - wait_for_trigger:
+                              - trigger: device
+                                domain: zha
+                                device_id: !input remote
+                                type: "remote_button_short_press"
+                                subtype: "turn_off"
+                              - trigger: mqtt
+                                topic: !input mqtt_topic
+                                payload: "off"
+                                value_template: "{{ value_json.action }}"
+                            timeout:
+                              milliseconds: !input multi_tap_window
+                            continue_on_timeout: true
+                          - choose:
+                              - conditions: "{{ wait.trigger == none }}"
+                                sequence: !input off_double_tap_action
+                            default: !input off_triple_tap_action
+
+      # ======================== HOLD ON START (przytrzymanie WŁĄCZ) ===========
+      - conditions:
+          - "{{ trigger.id == 'hold_on_start' }}"
+        sequence:
+          # --- Krok 1: jeśli światło zgaszone i opcja włączona, startuj od minimum ---
+          - if:
+              - "{{ v_start_from_min_on_hold }}"
+              - "{{ light_entities | select('is_state', 'on') | list | length == 0 }}"
+            then:
+              - action: light.turn_on
+                target: !input target_lights
+                data:
+                  brightness: "{{ v_min_brightness }}"
+                  transition: 0
+
+          # --- Krok 2: pętla zwiększania jasności do puszczenia przycisku ---
+          - repeat:
+              sequence:
+                - action: light.turn_on
+                  target: !input target_lights
+                  data:
+                    brightness_step: "{{ v_brightness_step }}"
+                    transition: 0
+
+                - wait_for_trigger:
+                    # ZHA: puszczenie po dim_up
+                    - trigger: device
+                      domain: zha
+                      device_id: !input remote
+                      type: "remote_button_long_release"
+                      subtype: "dim_up"
+                    # Z2MQTT: stop ściemniania
+                    - trigger: mqtt
+                      topic: !input mqtt_topic
+                      payload: "brightness_stop"
+                      value_template: "{{ value_json.action }}"
+                  timeout:
+                    milliseconds: !input brightness_step_delay
+                  continue_on_timeout: true
+              while:
+                # Pętla działa dopóki nie przyjdzie zdarzenie puszczenia
+                # ORAZ przynajmniej jedno światło nie osiągnęło maks. jasności.
+                - "{{ wait.trigger == none }}"
+                - >
+                  {% set max_b = light_entities
+                                | select('is_state', 'on')
+                                | map('state_attr', 'brightness')
+                                | reject('none')
+                                | map('int', 0)
+                                | max(default=0) %}
+                  {{ max_b < v_max_brightness }}
+
+          # --- Krok 3: dodatkowe akcje użytkownika po zakończeniu hold ---
+          - choose: []
+            default: !input on_hold_action
+
+      # ======================== HOLD OFF START (przytrzymanie WYŁĄCZ) =========
+      - conditions:
+          - "{{ trigger.id == 'hold_off_start' }}"
+        sequence:
+          # --- Pętla zmniejszania jasności do puszczenia przycisku ---
+          - repeat:
+              sequence:
+                - action: light.turn_on
+                  target: !input target_lights
+                  data:
+                    brightness_step: "{{ 0 - v_brightness_step }}"
+                    transition: 0
+
+                - wait_for_trigger:
+                    # ZHA: puszczenie po dim_down
+                    - trigger: device
+                      domain: zha
+                      device_id: !input remote
+                      type: "remote_button_long_release"
+                      subtype: "dim_down"
+                    # Z2MQTT: stop ściemniania
+                    - trigger: mqtt
+                      topic: !input mqtt_topic
+                      payload: "brightness_stop"
+                      value_template: "{{ value_json.action }}"
+                  timeout:
+                    milliseconds: !input brightness_step_delay
+                  continue_on_timeout: true
+              while:
+                # Pętla działa dopóki nie przyjdzie zdarzenie puszczenia
+                # ORAZ przynajmniej jedno światło jest włączone i ma jasność > min.
+                - "{{ wait.trigger == none }}"
+                - >
+                  {% set on_lights = light_entities | select('is_state', 'on') | list %}
+                  {% set min_b = (on_lights | map('state_attr', 'brightness') | reject('none') | map('int', 9999) | min(default=9999)) if on_lights | length > 0 else 0 %}
+                  {{ on_lights | length > 0 and min_b > v_min_brightness }}
+
+          # --- Krok 2: jeśli opcja włączona i osiągnięto minimum → wyłącz ---
+          - if:
+              - "{{ v_turn_off_at_min }}"
+              - >
+                {% set min_b = light_entities
+                              | select('is_state', 'on')
+                              | map('state_attr', 'brightness')
+                              | reject('none')
+                              | map('int', 9999)
+                              | min(default=9999) %}
+                {{ min_b <= v_min_brightness }}
+            then:
+              - action: light.turn_off
+                target: !input target_lights
+                data:
+                  transition: 0
+
+          # --- Krok 3: dodatkowe akcje użytkownika po zakończeniu hold ---
+          - choose: []
+            default: !input off_hold_action
