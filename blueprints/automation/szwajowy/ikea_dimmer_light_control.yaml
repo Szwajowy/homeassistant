@@ -403,12 +403,17 @@ blueprint:
 
         multi_tap_window:
           name: "⏱️ Okno wykrywania multi-tap"
-          description: "Maksymalny czas między kolejnymi klikami, aby zostały rozpoznane jako multi-tap (w milisekundach)."
-          default: 400
+          description: >
+            Maksymalny czas między kolejnymi klikami, aby zostały rozpoznane jako multi-tap (w milisekundach).
+            ⚠️ Jeśli klikasz „spokojnie" (odstęp >1s) podnieś tę wartość do **1000–1500 ms**,
+            inaczej drugie kliknięcie zostanie potraktowane jako kolejny pojedynczy klik.
+            ⚠️ Wartość wpływa też na opóźnienie reakcji single-tap (blueprint czeka pełne okno
+            zanim odpali akcję pojedynczego klika).
+          default: 600
           selector:
             number:
               min: 200
-              max: 1000
+              max: 2000
               step: 50
               unit_of_measurement: "ms"
               mode: slider
