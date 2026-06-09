@@ -64,6 +64,7 @@ blueprint:
           name: "🔁 Sensor licznika cykli (opcjonalny)"
           description: >
             Np. sensor.pralka_cycle_count.
+          default: ""
           selector:
             entity:
               domain: sensor
@@ -258,6 +259,7 @@ blueprint:
           name: "🧪 Encja czujnika zalania"
           description: >
             Np. binary_sensor.pralnia_zalanie.
+          default: ""
           selector:
             entity:
               domain: binary_sensor
@@ -350,6 +352,7 @@ blueprint:
         away_override_entity:
           name: "🧷 Dodatkowa encja aktywująca tryb poza domem"
           description: "Jeśli ma stan on/true/home, tryb poza domem jest aktywny niezależnie od osób."
+          default: ""
           selector:
             entity:
               filter:
