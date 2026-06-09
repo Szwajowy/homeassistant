@@ -259,10 +259,11 @@ blueprint:
           name: "🧪 Encja czujnika zalania"
           description: >
             Np. binary_sensor.pralnia_zalanie.
-          default: ""
+          default: []
           selector:
             entity:
               domain: binary_sensor
+              multiple: true
 
         flood_debounce_seconds:
           name: "🧹 Anty-flapping (sekundy)"
@@ -600,7 +601,15 @@ max: 20
 max_exceeded: silent
 
 trigger_variables:
-  flood_sensor_entity_input: !input flood_sensor_entity
+  flood_sensor_entities_input: !input flood_sensor_entity
+  flood_sensor_entity_input: >
+    {% if flood_sensor_entities_input is string %}
+      {{ flood_sensor_entities_input }}
+    {% elif flood_sensor_entities_input | length > 0 %}
+      {{ flood_sensor_entities_input[0] }}
+    {% else %}
+      {{ '' }}
+    {% endif %}
 
 triggers:
   - trigger: state
@@ -651,7 +660,7 @@ actions:
       v_dismiss_button_text: !input dismiss_button_text
 
       v_flood_enabled: !input flood_enabled
-      v_flood_sensor_entity: !input flood_sensor_entity
+      v_flood_sensor_entity_raw: !input flood_sensor_entity
       v_flood_actionable: !input flood_actionable
       v_flood_timeout_minutes: !input flood_timeout_minutes
       v_flood_confirm_text: !input flood_confirm_text
@@ -761,6 +770,14 @@ actions:
       action_flood_dismiss: "WASH_FLOOD_DISMISS_{{ context.id }}"
 
       notify_entities: "{{ v_notify_entities }}"
+      v_flood_sensor_entity: >
+        {% if v_flood_sensor_entity_raw is string %}
+          {{ v_flood_sensor_entity_raw }}
+        {% elif v_flood_sensor_entity_raw | length > 0 %}
+          {{ v_flood_sensor_entity_raw[0] }}
+        {% else %}
+          {{ '' }}
+        {% endif %}
 
   - if: "{{ v_enable_logging }}"
     then:
