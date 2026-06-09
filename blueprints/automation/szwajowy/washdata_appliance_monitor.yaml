@@ -599,6 +599,9 @@ mode: parallel
 max: 20
 max_exceeded: silent
 
+trigger_variables:
+  flood_sensor_entity_input: !input flood_sensor_entity
+
 triggers:
   - trigger: state
     entity_id: !input wd_state_sensor
@@ -615,9 +618,9 @@ triggers:
     below: !input pre_end_minutes
     id: cycle_pre_end
 
-  - trigger: state
-    entity_id: !input flood_sensor_entity
-    to: "on"
+  - trigger: template
+    value_template: >
+      {{ flood_sensor_entity_input not in ['', none] and is_state(flood_sensor_entity_input, 'on') }}
     for:
       seconds: !input flood_debounce_seconds
     id: flood_on
