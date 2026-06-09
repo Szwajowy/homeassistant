@@ -8,6 +8,8 @@ blueprint:
 
     ## ⚡ Funkcje
     - 🔔 Powiadomienia o starcie, końcu i (opcjonalnie) przed końcem cyklu
+    - 📨 Jedna wspólna lista usług `notify` dla wszystkich powiadomień
+    - ⚙️ Dodatkowa akcja użytkownika po zakończeniu cyklu
     - 😴 Tryb końca cyklu: informacyjny lub akcjonowalny (Drzemka / Odrzuć)
     - 💧 Alerty zalania: informacyjne lub akcjonowalne (Wykonaj / Odrzuć)
     - 🤖 Auto-akcja po timeout przy zalaniu (opcjonalnie)
@@ -18,7 +20,7 @@ blueprint:
     - 💸 Ostrzeżenie o starcie podczas / blisko drogiej strefy
 
     ## ℹ️ Wskazówki
-    - W polach usług notify możesz podać wiele targetów: przecinek lub nowa linia.
+    - W polu usług notify możesz podać wiele targetów: przecinek lub nowa linia.
     - Przyciski akcji najlepiej działają z `notify.mobile_app_*`.
 
   domain: automation
@@ -64,14 +66,8 @@ blueprint:
             Jeśli nie używasz przypomnień konserwacyjnych, zostaw domyślną wartość.
           default: "sensor.__unused_cycle_count"
           selector:
-            text:
-
-        cycle_end_state:
-          name: "✅ Stan końca cyklu"
-          description: "Dla WashData zwykle: Clean"
-          default: "Clean"
-          selector:
-            text:
+            entity:
+              domain: sensor
 
     # =========================================================================
     # 🔔 SEKCJA 2: POWIADOMIENIA
@@ -80,21 +76,20 @@ blueprint:
       name: "🔔 Powiadomienia"
       icon: mdi:bell-ring
       description: >
-        Konfiguracja treści i targetów powiadomień.
-        W każdej liście możesz podać więcej niż jedną usługę notify.
+        Konfiguracja treści i wspólnych targetów powiadomień.
       input:
+        notify_services:
+          name: "📨 Usługi notify (wspólne dla wszystkich powiadomień)"
+          default: "notify.notify"
+          selector:
+            text:
+              multiline: true
+
         start_enabled:
           name: "▶️ Włącz powiadomienie o starcie"
           default: true
           selector:
             boolean:
-
-        start_notify_services:
-          name: "📨 Start — usługi notify (wiele)"
-          default: "notify.notify"
-          selector:
-            text:
-              multiline: true
 
         start_title:
           name: "📝 Start — tytuł"
@@ -117,13 +112,6 @@ blueprint:
           selector:
             boolean:
 
-        finish_notify_services:
-          name: "📨 Koniec — usługi notify (wiele)"
-          default: "notify.notify"
-          selector:
-            text:
-              multiline: true
-
         finish_title:
           name: "📝 Koniec — tytuł"
           description: "Placeholdery: {device}, {program}, {duration_min}."
@@ -138,6 +126,19 @@ blueprint:
           selector:
             text:
               multiline: true
+
+        finish_extra_action_enabled:
+          name: "⚙️ Wykonaj dodatkową akcję po zakończeniu cyklu"
+          default: false
+          selector:
+            boolean:
+
+        finish_extra_action:
+          name: "⚙️ Dodatkowa akcja po zakończeniu cyklu"
+          description: "Wykona się po zakończeniu obsługi końca cyklu."
+          default: []
+          selector:
+            action:
 
         pre_end_enabled:
           name: "⏱️ Włącz powiadomienie przed końcem"
@@ -156,13 +157,6 @@ blueprint:
               unit_of_measurement: "min"
               mode: slider
 
-        pre_end_notify_services:
-          name: "📨 Przed końcem — usługi notify (wiele)"
-          default: "notify.notify"
-          selector:
-            text:
-              multiline: true
-
         pre_end_title:
           name: "📝 Przed końcem — tytuł"
           description: "Placeholdery: {device}, {program}, {minutes_left}."
@@ -177,6 +171,12 @@ blueprint:
           selector:
             text:
               multiline: true
+
+        delay_finish_until_home:
+          name: "🏠 Opóźnij powiadomienie końca do powrotu domowników"
+          default: false
+          selector:
+            boolean:
 
     # =========================================================================
     # 😴 SEKCJA 3: DRZEMKA
@@ -242,7 +242,8 @@ blueprint:
             Jeśli nie używasz tej funkcji, zostaw domyślną wartość.
           default: "binary_sensor.__unused_flood"
           selector:
-            text:
+            entity:
+              domain: binary_sensor
 
         flood_debounce_seconds:
           name: "🧹 Anty-flapping (sekundy)"
@@ -255,13 +256,6 @@ blueprint:
               step: 1
               unit_of_measurement: "s"
               mode: slider
-
-        flood_notify_services:
-          name: "📨 Zalanie — usługi notify (wiele)"
-          default: "notify.notify"
-          selector:
-            text:
-              multiline: true
 
         flood_title:
           name: "📝 Zalanie — tytuł"
@@ -318,41 +312,7 @@ blueprint:
             action:
 
     # =========================================================================
-    # 👥 SEKCJA 5: OBECNOŚĆ
-    # =========================================================================
-    presence_section:
-      name: "👥 Obecność domowników"
-      icon: mdi:home-account
-      collapsed: true
-      description: "Opcjonalne czekanie z końcem cyklu do powrotu domowników."
-      input:
-        delay_finish_until_home:
-          name: "🏠 Czekaj z końcem cyklu aż ktoś wróci"
-          default: false
-          selector:
-            boolean:
-
-        people_entities:
-          name: "👤 Osoby do monitorowania"
-          default: []
-          selector:
-            entity:
-              domain: person
-              multiple: true
-
-        max_wait_home_minutes:
-          name: "⏳ Maksymalny czas czekania na powrót"
-          default: 180
-          selector:
-            number:
-              min: 1
-              max: 1440
-              step: 1
-              unit_of_measurement: "min"
-              mode: slider
-
-    # =========================================================================
-    # 🏝️ SEKCJA 6: TRYB POZA DOMEM
+    # 🏝️ SEKCJA 5: TRYB POZA DOMEM
     # =========================================================================
     away_section:
       name: "🏝️ Tryb poza domem"
@@ -362,6 +322,24 @@ blueprint:
         Przy zalaniu poza domem możesz skrócić timeout lub wykonać akcję natychmiast.
         Opcja "głośniejszy alert" doda payload high-priority dla wspieranych targetów.
       input:
+        people_entities:
+          name: "👤 Osoby do monitorowania"
+          default: []
+          selector:
+            entity:
+              domain: person
+              multiple: true
+
+        away_override_entity:
+          name: "🧷 Dodatkowa encja aktywująca tryb poza domem"
+          description: "Jeśli ma stan on/true/home, tryb poza domem jest aktywny niezależnie od osób."
+          default: "binary_sensor.__unused_away_override"
+          selector:
+            entity:
+              filter:
+                - domain: binary_sensor
+                - domain: input_boolean
+
         away_mode_enabled:
           name: "🛡️ Włącz tryb poza domem"
           default: true
@@ -399,7 +377,7 @@ blueprint:
             boolean:
 
     # =========================================================================
-    # 🛠️ SEKCJA 7: KONSERWACJA
+    # 🛠️ SEKCJA 6: KONSERWACJA
     # =========================================================================
     maintenance_section:
       name: "🛠️ Konserwacja"
@@ -423,13 +401,6 @@ blueprint:
               step: 1
               mode: box
 
-        maintenance_notify_services:
-          name: "📨 Konserwacja — usługi notify (wiele)"
-          default: "notify.notify"
-          selector:
-            text:
-              multiline: true
-
         maintenance_title:
           name: "📝 Konserwacja — tytuł"
           description: "Placeholdery: {device}, {cycle_count}."
@@ -446,7 +417,7 @@ blueprint:
               multiline: true
 
     # =========================================================================
-    # 🔊 SEKCJA 8: TTS
+    # 🔊 SEKCJA 7: TTS
     # =========================================================================
     tts_section:
       name: "🔊 TTS"
@@ -514,14 +485,14 @@ blueprint:
             text:
 
     # =========================================================================
-    # 💸 SEKCJA 9: DROGA STREFA
+    # 💸 SEKCJA 8: DROGA STREFA
     # =========================================================================
     expensive_section:
       name: "💸 Droga strefa"
       icon: mdi:cash-alert
       collapsed: true
       description: >
-        Ostrzegaj, gdy cykl startuje podczas drogiej strefy lub blisko jej początku.
+        Ostrzegaj, gdy cykl startuje w aktywnej drogiej strefie.
       input:
         expensive_enabled:
           name: "💸 Włącz ostrzeżenie"
@@ -529,43 +500,14 @@ blueprint:
           selector:
             boolean:
 
-        expensive_now_entity:
-          name: "📈 Encja aktywnej drogiej strefy"
-          description: "Np. binary_sensor.droga_taryfa"
-          default: "binary_sensor.__unused_expensive_now"
+        expensive_schedule_entities:
+          name: "🗓️ Harmonogramy drogiej strefy"
+          description: "Wybierz jeden lub wiele encji schedule. Jeśli dowolna ma stan on, zostanie wysłane ostrzeżenie."
+          default: []
           selector:
-            text:
-
-        expensive_now_state:
-          name: "🏷️ Wartość oznaczająca drogą strefę"
-          default: "on"
-          selector:
-            text:
-
-        expensive_next_start_entity:
-          name: "🕒 Encja następnego startu drogiej strefy"
-          description: "Sensor z timestamp; opcjonalny."
-          default: "sensor.__unused_expensive_next_start"
-          selector:
-            text:
-
-        expensive_window_minutes:
-          name: "⏳ Okno ostrzeżenia (minuty)"
-          default: 30
-          selector:
-            number:
-              min: 1
-              max: 240
-              step: 1
-              unit_of_measurement: "min"
-              mode: slider
-
-        expensive_notify_services:
-          name: "📨 Droga strefa — usługi notify (wiele)"
-          default: "notify.notify"
-          selector:
-            text:
-              multiline: true
+            entity:
+              domain: schedule
+              multiple: true
 
         expensive_title:
           name: "📝 Droga strefa — tytuł"
@@ -583,7 +525,7 @@ blueprint:
               multiline: true
 
     # =========================================================================
-    # 🔧 SEKCJA 10: ZAAWANSOWANE
+    # 🔧 SEKCJA 9: ZAAWANSOWANE
     # =========================================================================
     advanced_section:
       name: "🔧 Zaawansowane"
@@ -596,6 +538,13 @@ blueprint:
           default: false
           selector:
             boolean:
+
+        cycle_end_state:
+          name: "✅ Stan końca cyklu"
+          description: "Domyślnie dla WashData: finished. Zmień tylko jeśli Twoja encja używa innej wartości."
+          default: "finished"
+          selector:
+            text:
 
         blocking_condition:
           name: "🚫 Globalny warunek blokujący"
@@ -646,6 +595,7 @@ actions:
       v_start_enabled: !input start_enabled
       v_finish_enabled: !input finish_enabled
       v_pre_end_enabled: !input pre_end_enabled
+      v_finish_extra_action_enabled: !input finish_extra_action_enabled
 
       v_finish_actionable: !input finish_actionable
       v_snooze_interval_minutes: !input snooze_interval_minutes
@@ -661,7 +611,7 @@ actions:
 
       v_delay_finish_until_home: !input delay_finish_until_home
       v_people_entities: !input people_entities
-      v_max_wait_home_minutes: !input max_wait_home_minutes
+      v_away_override_entity: !input away_override_entity
 
       v_away_mode_enabled: !input away_mode_enabled
       v_away_strategy: !input away_strategy
@@ -679,10 +629,7 @@ actions:
       v_tts_flood_enabled: !input tts_flood_enabled
 
       v_expensive_enabled: !input expensive_enabled
-      v_expensive_now_entity: !input expensive_now_entity
-      v_expensive_now_state: !input expensive_now_state
-      v_expensive_next_start_entity: !input expensive_next_start_entity
-      v_expensive_window_minutes: !input expensive_window_minutes
+      v_expensive_schedule_entities: !input expensive_schedule_entities
 
       v_start_title: !input start_title
       v_start_message: !input start_message
@@ -700,12 +647,7 @@ actions:
       v_tts_finish_message: !input tts_finish_message
       v_tts_flood_message: !input tts_flood_message
 
-      v_start_notify_services_raw: !input start_notify_services
-      v_finish_notify_services_raw: !input finish_notify_services
-      v_pre_end_notify_services_raw: !input pre_end_notify_services
-      v_flood_notify_services_raw: !input flood_notify_services
-      v_maintenance_notify_services_raw: !input maintenance_notify_services
-      v_expensive_notify_services_raw: !input expensive_notify_services
+      v_notify_services_raw: !input notify_services
 
       device_name: "{{ state_attr(v_wd_state_sensor, 'friendly_name') or v_wd_state_sensor }}"
       program_name: "{{ states(v_wd_program_sensor) }}"
@@ -717,10 +659,17 @@ actions:
         {{ (d1 if d1 is not none else (d2 if d2 is not none else 0)) | int(0) }}
 
       someone_home: "{{ (v_people_entities | length > 0) and ((v_people_entities | select('is_state', 'home') | list | length) > 0) }}"
-      all_away: "{{ v_away_mode_enabled and (v_people_entities | length > 0) and not someone_home }}"
+      all_away: "{{ (v_people_entities | length > 0) and not someone_home }}"
+      away_override_on: >
+        {% if v_away_override_entity in ['binary_sensor.__unused_away_override', '', none] %}
+          false
+        {% else %}
+          {{ states(v_away_override_entity) in ['on', 'true', 'home'] }}
+        {% endif %}
+      away_active: "{{ v_away_mode_enabled and (all_away or away_override_on) }}"
 
       flood_effective_timeout_minutes: >
-        {% if all_away and v_away_strategy == 'shorten_timeout' %}
+        {% if away_active and v_away_strategy == 'shorten_timeout' %}
           {{ v_away_timeout_minutes | int(0) }}
         {% else %}
           {{ v_flood_timeout_minutes | int(0) }}
@@ -731,53 +680,8 @@ actions:
       action_flood_confirm: "WASH_FLOOD_CONFIRM_{{ context.id }}"
       action_flood_dismiss: "WASH_FLOOD_DISMISS_{{ context.id }}"
 
-      notify_start_services: >
-        {% set raw = (v_start_notify_services_raw | string).replace('\n', ',') %}
-        {% set ns = namespace(lst=[]) %}
-        {% for s in raw.split(',') %}
-          {% set x = s | trim %}
-          {% if x != '' %}{% set ns.lst = ns.lst + [x] %}{% endif %}
-        {% endfor %}
-        {{ ns.lst }}
-
-      notify_finish_services: >
-        {% set raw = (v_finish_notify_services_raw | string).replace('\n', ',') %}
-        {% set ns = namespace(lst=[]) %}
-        {% for s in raw.split(',') %}
-          {% set x = s | trim %}
-          {% if x != '' %}{% set ns.lst = ns.lst + [x] %}{% endif %}
-        {% endfor %}
-        {{ ns.lst }}
-
-      notify_pre_end_services: >
-        {% set raw = (v_pre_end_notify_services_raw | string).replace('\n', ',') %}
-        {% set ns = namespace(lst=[]) %}
-        {% for s in raw.split(',') %}
-          {% set x = s | trim %}
-          {% if x != '' %}{% set ns.lst = ns.lst + [x] %}{% endif %}
-        {% endfor %}
-        {{ ns.lst }}
-
-      notify_flood_services: >
-        {% set raw = (v_flood_notify_services_raw | string).replace('\n', ',') %}
-        {% set ns = namespace(lst=[]) %}
-        {% for s in raw.split(',') %}
-          {% set x = s | trim %}
-          {% if x != '' %}{% set ns.lst = ns.lst + [x] %}{% endif %}
-        {% endfor %}
-        {{ ns.lst }}
-
-      notify_maintenance_services: >
-        {% set raw = (v_maintenance_notify_services_raw | string).replace('\n', ',') %}
-        {% set ns = namespace(lst=[]) %}
-        {% for s in raw.split(',') %}
-          {% set x = s | trim %}
-          {% if x != '' %}{% set ns.lst = ns.lst + [x] %}{% endif %}
-        {% endfor %}
-        {{ ns.lst }}
-
-      notify_expensive_services: >
-        {% set raw = (v_expensive_notify_services_raw | string).replace('\n', ',') %}
+      notify_services: >
+        {% set raw = (v_notify_services_raw | string).replace('\n', ',') %}
         {% set ns = namespace(lst=[]) %}
         {% for s in raw.split(',') %}
           {% set x = s | trim %}
@@ -790,7 +694,7 @@ actions:
       - action: logbook.log
         data:
           name: "🧺 WashData Blueprint"
-          message: "Trigger: {{ trigger.id }} | Program: {{ program_name }} | all_away: {{ all_away }}"
+          message: "Trigger: {{ trigger.id }} | Program: {{ program_name }} | away_active: {{ away_active }}"
 
   - choose:
       - conditions:
@@ -809,29 +713,18 @@ actions:
                 {{ t }}
 
               expensive_now: >
-                {% if v_expensive_now_entity in ['binary_sensor.__unused_expensive_now', '', none] %}
-                  false
-                {% else %}
-                  {{ states(v_expensive_now_entity) == v_expensive_now_state }}
-                {% endif %}
-              expensive_delta_min: >
-                {% if v_expensive_next_start_entity in ['sensor.__unused_expensive_next_start', '', none] %}
-                  99999
-                {% else %}
-                  {% set st = states(v_expensive_next_start_entity) %}
-                  {% if st in ['unknown', 'unavailable', 'none', ''] %}
-                    99999
-                  {% else %}
-                    {{ ((as_timestamp(st, 0) - as_timestamp(now())) / 60) | int(99999) }}
+                {% set ns = namespace(active=false) %}
+                {% for sch in v_expensive_schedule_entities %}
+                  {% if is_state(sch, 'on') %}
+                    {% set ns.active = true %}
                   {% endif %}
-                {% endif %}
-              expensive_near: >
-                {{ expensive_delta_min | int(99999) >= 0 and expensive_delta_min | int(99999) <= (v_expensive_window_minutes | int(0)) }}
+                {% endfor %}
+                {{ ns.active }}
 
           - if: "{{ v_start_enabled }}"
             then:
               - repeat:
-                  for_each: "{{ notify_start_services }}"
+                  for_each: "{{ notify_services }}"
                   sequence:
                     - action: "{{ repeat.item }}"
                       continue_on_error: true
@@ -857,7 +750,7 @@ actions:
                     {{ t }}
 
           - if:
-              - "{{ v_expensive_enabled and (expensive_now or expensive_near) }}"
+              - "{{ v_expensive_enabled and expensive_now }}"
             then:
               - variables:
                   expensive_title_rendered: >
@@ -871,7 +764,7 @@ actions:
                     {% set t = t | replace('{program}', program_name) %}
                     {{ t }}
               - repeat:
-                  for_each: "{{ notify_expensive_services }}"
+                  for_each: "{{ notify_services }}"
                   sequence:
                     - action: "{{ repeat.item }}"
                       continue_on_error: true
@@ -899,7 +792,7 @@ actions:
                 {{ t }}
 
           - repeat:
-              for_each: "{{ notify_pre_end_services }}"
+              for_each: "{{ notify_services }}"
               sequence:
                 - action: "{{ repeat.item }}"
                   continue_on_error: true
@@ -928,14 +821,11 @@ actions:
               - "{{ v_delay_finish_until_home and (v_people_entities | length > 0) and not someone_home }}"
             then:
               - wait_template: "{{ (v_people_entities | select('is_state', 'home') | list | length) > 0 }}"
-                timeout:
-                  minutes: "{{ v_max_wait_home_minutes }}"
-                continue_on_timeout: true
 
           - if: "{{ v_finish_enabled and not v_finish_actionable }}"
             then:
               - repeat:
-                  for_each: "{{ notify_finish_services }}"
+                  for_each: "{{ notify_services }}"
                   sequence:
                     - action: "{{ repeat.item }}"
                       continue_on_error: true
@@ -950,7 +840,7 @@ actions:
               - repeat:
                   sequence:
                     - repeat:
-                        for_each: "{{ notify_finish_services }}"
+                        for_each: "{{ notify_services }}"
                         sequence:
                           - action: "{{ repeat.item }}"
                             continue_on_error: true
@@ -1020,13 +910,17 @@ actions:
                     {% set t = t | replace('{cycle_count}', cycle_count | string) %}
                     {{ t }}
               - repeat:
-                  for_each: "{{ notify_maintenance_services }}"
+                  for_each: "{{ notify_services }}"
                   sequence:
                     - action: "{{ repeat.item }}"
                       continue_on_error: true
                       data:
                         title: "{{ maintenance_title_rendered }}"
                         message: "{{ maintenance_message_rendered }}"
+
+          - if:
+              - "{{ v_finish_extra_action_enabled }}"
+            then: !input finish_extra_action
 
       - conditions:
           - "{{ trigger.id == 'flood_on' }}"
@@ -1044,15 +938,15 @@ actions:
                 {% set t = t | replace('{device}', device_name) %}
                 {% set t = t | replace('{program}', program_name) %}
                 {{ t }}
-              away_immediate: "{{ all_away and v_away_strategy == 'immediate_action' }}"
-              use_loud_payload: "{{ all_away and v_away_loud_alert }}"
+              away_immediate: "{{ away_active and v_away_strategy == 'immediate_action' }}"
+              use_loud_payload: "{{ away_active and v_away_loud_alert }}"
 
           - choose:
               - conditions:
                   - "{{ use_loud_payload }}"
                 sequence:
                   - repeat:
-                      for_each: "{{ notify_flood_services }}"
+                      for_each: "{{ notify_services }}"
                       sequence:
                         - action: "{{ repeat.item }}"
                           continue_on_error: true
@@ -1078,7 +972,7 @@ actions:
 
             default:
               - repeat:
-                  for_each: "{{ notify_flood_services }}"
+                  for_each: "{{ notify_services }}"
                   sequence:
                     - action: "{{ repeat.item }}"
                       continue_on_error: true
