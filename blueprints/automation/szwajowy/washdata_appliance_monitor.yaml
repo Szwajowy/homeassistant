@@ -8,7 +8,7 @@ blueprint:
 
     ## ⚡ Funkcje
     - 🔔 Powiadomienia o starcie, końcu i (opcjonalnie) przed końcem cyklu
-    - 📨 Jedna wspólna lista usług `notify` dla wszystkich powiadomień
+    - 📨 Wspólny wybór encji `notify` przez UI dla wszystkich powiadomień
     - ⚙️ Dodatkowa akcja użytkownika po zakończeniu cyklu
     - 😴 Tryb końca cyklu: informacyjny lub akcjonowalny (Drzemka / Odrzuć)
     - 💧 Alerty zalania: informacyjne lub akcjonowalne (Wykonaj / Odrzuć)
@@ -20,8 +20,8 @@ blueprint:
     - 💸 Ostrzeżenie o starcie podczas / blisko drogiej strefy
 
     ## ℹ️ Wskazówki
-    - W polu usług notify możesz podać wiele targetów: przecinek lub nowa linia.
-    - Przyciski akcji najlepiej działają z `notify.mobile_app_*`.
+    - Wybierz jedną lub wiele encji `notify` (np. z aplikacji mobilnej).
+    - Przyciski akcji najlepiej działają z encjami `notify` z aplikacji mobilnej.
 
   domain: automation
   author: Szwajowy
@@ -76,12 +76,13 @@ blueprint:
       description: >
         Konfiguracja treści i wspólnych targetów powiadomień.
       input:
-        notify_services:
-          name: "📨 Usługi notify (wspólne dla wszystkich powiadomień)"
-          default: "notify.notify"
+        notify_entities:
+          name: "📨 Encje notify (wspólne dla wszystkich powiadomień)"
+          default: []
           selector:
-            text:
-              multiline: true
+            entity:
+              domain: notify
+              multiple: true
 
         start_enabled:
           name: "▶️ Włącz powiadomienie o starcie"
@@ -412,7 +413,7 @@ blueprint:
       name: "🔊 TTS"
       icon: mdi:text-to-speech
       collapsed: true
-      description: "Opcjonalne komunikaty głosowe dla startu, końca i zalania."
+      description: "Opcjonalne komunikaty głosowe dla startu, końca i zalania, z opcjonalnym harmonogramem aktywności."
       input:
         tts_enabled:
           name: "🔊 Włącz TTS"
@@ -423,6 +424,7 @@ blueprint:
         tts_engine_entity:
           name: "🗣️ Encja TTS"
           description: "Np. tts.google_translate_pl"
+          default: ""
           selector:
             entity:
               domain: tts
@@ -430,9 +432,19 @@ blueprint:
         tts_media_player_entity:
           name: "📢 Media player"
           description: "Np. media_player.kuchnia"
+          default: ""
           selector:
             entity:
               domain: media_player
+
+        tts_schedule_entities:
+          name: "🗓️ Harmonogram TTS (opcjonalny)"
+          description: "Jeśli wybierzesz harmonogram(y), TTS działa tylko gdy dowolny z nich ma stan on. Gdy puste, TTS działa zawsze."
+          default: []
+          selector:
+            entity:
+              domain: schedule
+              multiple: true
 
         tts_start_enabled:
           name: "▶️ TTS dla startu"
@@ -497,6 +509,18 @@ blueprint:
             entity:
               domain: schedule
               multiple: true
+
+        expensive_pre_notify_minutes:
+          name: "⏱️ Powiadomienie ile minut przed drogą strefą"
+          description: "Działa, jeśli harmonogram udostępnia atrybut next_event_time i kolejny event to on."
+          default: 30
+          selector:
+            number:
+              min: 0
+              max: 240
+              step: 1
+              unit_of_measurement: "min"
+              mode: slider
 
         expensive_title:
           name: "📝 Droga strefa — tytuł"
@@ -613,12 +637,14 @@ actions:
       v_tts_enabled: !input tts_enabled
       v_tts_engine_entity: !input tts_engine_entity
       v_tts_media_player_entity: !input tts_media_player_entity
+      v_tts_schedule_entities: !input tts_schedule_entities
       v_tts_start_enabled: !input tts_start_enabled
       v_tts_finish_enabled: !input tts_finish_enabled
       v_tts_flood_enabled: !input tts_flood_enabled
 
       v_expensive_enabled: !input expensive_enabled
       v_expensive_schedule_entities: !input expensive_schedule_entities
+      v_expensive_pre_notify_minutes: !input expensive_pre_notify_minutes
 
       v_start_title: !input start_title
       v_start_message: !input start_message
@@ -636,7 +662,7 @@ actions:
       v_tts_finish_message: !input tts_finish_message
       v_tts_flood_message: !input tts_flood_message
 
-      v_notify_services_raw: !input notify_services
+      v_notify_entities: !input notify_entities
 
       device_name: "{{ state_attr(v_wd_state_sensor, 'friendly_name') or v_wd_state_sensor }}"
       program_name: "{{ states(v_wd_program_sensor) }}"
@@ -657,6 +683,19 @@ actions:
         {% endif %}
       away_active: "{{ v_away_mode_enabled and (all_away or away_override_on) }}"
 
+      tts_allowed: >
+        {% if v_tts_schedule_entities | length == 0 %}
+          true
+        {% else %}
+          {% set ns = namespace(active=false) %}
+          {% for sch in v_tts_schedule_entities %}
+            {% if is_state(sch, 'on') %}
+              {% set ns.active = true %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.active }}
+        {% endif %}
+
       flood_effective_timeout_minutes: >
         {% if away_active and v_away_strategy == 'shorten_timeout' %}
           {{ v_away_timeout_minutes | int(0) }}
@@ -669,14 +708,7 @@ actions:
       action_flood_confirm: "WASH_FLOOD_CONFIRM_{{ context.id }}"
       action_flood_dismiss: "WASH_FLOOD_DISMISS_{{ context.id }}"
 
-      notify_services: >
-        {% set raw = (v_notify_services_raw | string).replace('\n', ',') %}
-        {% set ns = namespace(lst=[]) %}
-        {% for s in raw.split(',') %}
-          {% set x = s | trim %}
-          {% if x != '' %}{% set ns.lst = ns.lst + [x] %}{% endif %}
-        {% endfor %}
-        {{ ns.lst }}
+      notify_entities: "{{ v_notify_entities }}"
 
   - if: "{{ v_enable_logging }}"
     then:
@@ -709,20 +741,40 @@ actions:
                   {% endif %}
                 {% endfor %}
                 {{ ns.active }}
+              expensive_near: >
+                {% if (v_expensive_pre_notify_minutes | int(0)) <= 0 %}
+                  false
+                {% else %}
+                  {% set ns = namespace(active=false) %}
+                  {% for sch in v_expensive_schedule_entities %}
+                    {% set next_event = state_attr(sch, 'next_event') %}
+                    {% set next_time = state_attr(sch, 'next_event_time') %}
+                    {% if next_event == 'on' and next_time not in [none, '', 'unknown', 'unavailable'] %}
+                      {% set delta_min = ((as_timestamp(next_time, 0) - as_timestamp(now())) / 60) | int(99999) %}
+                      {% if delta_min >= 0 and delta_min <= (v_expensive_pre_notify_minutes | int(0)) %}
+                        {% set ns.active = true %}
+                      {% endif %}
+                    {% endif %}
+                  {% endfor %}
+                  {{ ns.active }}
+                {% endif %}
 
           - if: "{{ v_start_enabled }}"
             then:
               - repeat:
-                  for_each: "{{ notify_services }}"
+                  for_each: "{{ notify_entities }}"
                   sequence:
-                    - action: "{{ repeat.item }}"
+                    - action: notify.send_message
                       continue_on_error: true
+                      target:
+                        entity_id: "{{ repeat.item }}"
                       data:
                         title: "{{ start_title_rendered }}"
                         message: "{{ start_message_rendered }}"
 
           - if:
               - "{{ v_tts_enabled and v_tts_start_enabled }}"
+              - "{{ tts_allowed }}"
               - "{{ v_tts_engine_entity not in ['', none] }}"
               - "{{ v_tts_media_player_entity not in ['', none] }}"
             then:
@@ -739,7 +791,7 @@ actions:
                     {{ t }}
 
           - if:
-              - "{{ v_expensive_enabled and expensive_now }}"
+              - "{{ v_expensive_enabled and (expensive_now or expensive_near) }}"
             then:
               - variables:
                   expensive_title_rendered: >
@@ -753,10 +805,12 @@ actions:
                     {% set t = t | replace('{program}', program_name) %}
                     {{ t }}
               - repeat:
-                  for_each: "{{ notify_services }}"
+                  for_each: "{{ notify_entities }}"
                   sequence:
-                    - action: "{{ repeat.item }}"
+                    - action: notify.send_message
                       continue_on_error: true
+                      target:
+                        entity_id: "{{ repeat.item }}"
                       data:
                         title: "{{ expensive_title_rendered }}"
                         message: "{{ expensive_message_rendered }}"
@@ -781,10 +835,12 @@ actions:
                 {{ t }}
 
           - repeat:
-              for_each: "{{ notify_services }}"
+              for_each: "{{ notify_entities }}"
               sequence:
-                - action: "{{ repeat.item }}"
+                - action: notify.send_message
                   continue_on_error: true
+                  target:
+                    entity_id: "{{ repeat.item }}"
                   data:
                     title: "{{ pre_end_title_rendered }}"
                     message: "{{ pre_end_message_rendered }}"
@@ -814,10 +870,12 @@ actions:
           - if: "{{ v_finish_enabled and not v_finish_actionable }}"
             then:
               - repeat:
-                  for_each: "{{ notify_services }}"
+                  for_each: "{{ notify_entities }}"
                   sequence:
-                    - action: "{{ repeat.item }}"
+                    - action: notify.send_message
                       continue_on_error: true
+                      target:
+                        entity_id: "{{ repeat.item }}"
                       data:
                         title: "{{ finish_title_rendered }}"
                         message: "{{ finish_message_rendered }}"
@@ -829,10 +887,12 @@ actions:
               - repeat:
                   sequence:
                     - repeat:
-                        for_each: "{{ notify_services }}"
+                        for_each: "{{ notify_entities }}"
                         sequence:
-                          - action: "{{ repeat.item }}"
+                          - action: notify.send_message
                             continue_on_error: true
+                            target:
+                              entity_id: "{{ repeat.item }}"
                             data:
                               title: "{{ finish_title_rendered }}"
                               message: "{{ finish_message_rendered }}"
@@ -867,6 +927,7 @@ actions:
 
           - if:
               - "{{ v_tts_enabled and v_tts_finish_enabled }}"
+              - "{{ tts_allowed }}"
               - "{{ v_tts_engine_entity not in ['', none] }}"
               - "{{ v_tts_media_player_entity not in ['', none] }}"
             then:
@@ -899,10 +960,12 @@ actions:
                     {% set t = t | replace('{cycle_count}', cycle_count | string) %}
                     {{ t }}
               - repeat:
-                  for_each: "{{ notify_services }}"
+                  for_each: "{{ notify_entities }}"
                   sequence:
-                    - action: "{{ repeat.item }}"
+                    - action: notify.send_message
                       continue_on_error: true
+                      target:
+                        entity_id: "{{ repeat.item }}"
                       data:
                         title: "{{ maintenance_title_rendered }}"
                         message: "{{ maintenance_message_rendered }}"
@@ -935,10 +998,12 @@ actions:
                   - "{{ use_loud_payload }}"
                 sequence:
                   - repeat:
-                      for_each: "{{ notify_services }}"
+                      for_each: "{{ notify_entities }}"
                       sequence:
-                        - action: "{{ repeat.item }}"
+                        - action: notify.send_message
                           continue_on_error: true
+                          target:
+                            entity_id: "{{ repeat.item }}"
                           data:
                             title: "{{ flood_title_rendered }}"
                             message: "{{ flood_message_rendered }}"
@@ -961,10 +1026,12 @@ actions:
 
             default:
               - repeat:
-                  for_each: "{{ notify_services }}"
+                  for_each: "{{ notify_entities }}"
                   sequence:
-                    - action: "{{ repeat.item }}"
+                    - action: notify.send_message
                       continue_on_error: true
+                      target:
+                        entity_id: "{{ repeat.item }}"
                       data:
                         title: "{{ flood_title_rendered }}"
                         message: "{{ flood_message_rendered }}"
@@ -1011,6 +1078,7 @@ actions:
 
           - if:
               - "{{ v_tts_enabled and v_tts_flood_enabled }}"
+              - "{{ tts_allowed }}"
               - "{{ v_tts_engine_entity not in ['', none] }}"
               - "{{ v_tts_media_player_entity not in ['', none] }}"
             then:
