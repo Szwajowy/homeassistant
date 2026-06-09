@@ -259,11 +259,10 @@ blueprint:
           name: "🧪 Encja czujnika zalania"
           description: >
             Np. binary_sensor.pralnia_zalanie.
-          default: []
+          default: null
           selector:
             entity:
               domain: binary_sensor
-              multiple: true
 
         flood_debounce_seconds:
           name: "🧹 Anty-flapping (sekundy)"
@@ -603,7 +602,9 @@ max_exceeded: silent
 trigger_variables:
   flood_sensor_entities_input: !input flood_sensor_entity
   flood_sensor_entity_input: >
-    {% if flood_sensor_entities_input is string %}
+    {% if flood_sensor_entities_input in [none, ''] %}
+      {{ '' }}
+    {% elif flood_sensor_entities_input is string %}
       {{ flood_sensor_entities_input }}
     {% elif flood_sensor_entities_input | length > 0 %}
       {{ flood_sensor_entities_input[0] }}
@@ -771,7 +772,9 @@ actions:
 
       notify_entities: "{{ v_notify_entities }}"
       v_flood_sensor_entity: >
-        {% if v_flood_sensor_entity_raw is string %}
+        {% if v_flood_sensor_entity_raw in [none, ''] %}
+          {{ '' }}
+        {% elif v_flood_sensor_entity_raw is string %}
           {{ v_flood_sensor_entity_raw }}
         {% elif v_flood_sensor_entity_raw | length > 0 %}
           {{ v_flood_sensor_entity_raw[0] }}
