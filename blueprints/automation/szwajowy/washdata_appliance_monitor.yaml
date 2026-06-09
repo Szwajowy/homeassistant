@@ -63,8 +63,6 @@ blueprint:
           name: "🔁 Sensor licznika cykli (opcjonalny)"
           description: >
             Np. sensor.pralka_cycle_count.
-            Jeśli nie używasz przypomnień konserwacyjnych, zostaw domyślną wartość.
-          default: "sensor.__unused_cycle_count"
           selector:
             entity:
               domain: sensor
@@ -127,12 +125,6 @@ blueprint:
             text:
               multiline: true
 
-        finish_extra_action_enabled:
-          name: "⚙️ Wykonaj dodatkową akcję po zakończeniu cyklu"
-          default: false
-          selector:
-            boolean:
-
         finish_extra_action:
           name: "⚙️ Dodatkowa akcja po zakończeniu cyklu"
           description: "Wykona się po zakończeniu obsługi końca cyklu."
@@ -182,7 +174,7 @@ blueprint:
     # 😴 SEKCJA 3: DRZEMKA
     # =========================================================================
     snooze_section:
-      name: "😴 Drzemka i ponowienia"
+      name: "😴 Przypomnienie o zakończeniu cyklu"
       icon: mdi:alarm-snooze
       collapsed: true
       description: >
@@ -239,8 +231,6 @@ blueprint:
           name: "🧪 Encja czujnika zalania"
           description: >
             Np. binary_sensor.pralnia_zalanie.
-            Jeśli nie używasz tej funkcji, zostaw domyślną wartość.
-          default: "binary_sensor.__unused_flood"
           selector:
             entity:
               domain: binary_sensor
@@ -333,7 +323,6 @@ blueprint:
         away_override_entity:
           name: "🧷 Dodatkowa encja aktywująca tryb poza domem"
           description: "Jeśli ma stan on/true/home, tryb poza domem jest aktywny niezależnie od osób."
-          default: "binary_sensor.__unused_away_override"
           selector:
             entity:
               filter:
@@ -434,16 +423,16 @@ blueprint:
         tts_engine_entity:
           name: "🗣️ Encja TTS"
           description: "Np. tts.google_translate_pl"
-          default: "tts.__unused_engine"
           selector:
-            text:
+            entity:
+              domain: tts
 
         tts_media_player_entity:
           name: "📢 Media player"
           description: "Np. media_player.kuchnia"
-          default: "media_player.__unused_tts"
           selector:
-            text:
+            entity:
+              domain: media_player
 
         tts_start_enabled:
           name: "▶️ TTS dla startu"
@@ -595,7 +584,7 @@ actions:
       v_start_enabled: !input start_enabled
       v_finish_enabled: !input finish_enabled
       v_pre_end_enabled: !input pre_end_enabled
-      v_finish_extra_action_enabled: !input finish_extra_action_enabled
+      v_finish_extra_action: !input finish_extra_action
 
       v_finish_actionable: !input finish_actionable
       v_snooze_interval_minutes: !input snooze_interval_minutes
@@ -661,7 +650,7 @@ actions:
       someone_home: "{{ (v_people_entities | length > 0) and ((v_people_entities | select('is_state', 'home') | list | length) > 0) }}"
       all_away: "{{ (v_people_entities | length > 0) and not someone_home }}"
       away_override_on: >
-        {% if v_away_override_entity in ['binary_sensor.__unused_away_override', '', none] %}
+        {% if v_away_override_entity in ['', none] %}
           false
         {% else %}
           {{ states(v_away_override_entity) in ['on', 'true', 'home'] }}
@@ -734,8 +723,8 @@ actions:
 
           - if:
               - "{{ v_tts_enabled and v_tts_start_enabled }}"
-              - "{{ v_tts_engine_entity not in ['tts.__unused_engine', '', none] }}"
-              - "{{ v_tts_media_player_entity not in ['media_player.__unused_tts', '', none] }}"
+              - "{{ v_tts_engine_entity not in ['', none] }}"
+              - "{{ v_tts_media_player_entity not in ['', none] }}"
             then:
               - action: tts.speak
                 continue_on_error: true
@@ -878,8 +867,8 @@ actions:
 
           - if:
               - "{{ v_tts_enabled and v_tts_finish_enabled }}"
-              - "{{ v_tts_engine_entity not in ['tts.__unused_engine', '', none] }}"
-              - "{{ v_tts_media_player_entity not in ['media_player.__unused_tts', '', none] }}"
+              - "{{ v_tts_engine_entity not in ['', none] }}"
+              - "{{ v_tts_media_player_entity not in ['', none] }}"
             then:
               - action: tts.speak
                 continue_on_error: true
@@ -919,13 +908,13 @@ actions:
                         message: "{{ maintenance_message_rendered }}"
 
           - if:
-              - "{{ v_finish_extra_action_enabled }}"
+              - "{{ v_finish_extra_action | length > 0 }}"
             then: !input finish_extra_action
 
       - conditions:
           - "{{ trigger.id == 'flood_on' }}"
           - "{{ v_flood_enabled }}"
-          - "{{ v_flood_sensor_entity != 'binary_sensor.__unused_flood' }}"
+          - "{{ v_flood_sensor_entity not in ['', none] }}"
         sequence:
           - variables:
               flood_title_rendered: >
@@ -1022,8 +1011,8 @@ actions:
 
           - if:
               - "{{ v_tts_enabled and v_tts_flood_enabled }}"
-              - "{{ v_tts_engine_entity not in ['tts.__unused_engine', '', none] }}"
-              - "{{ v_tts_media_player_entity not in ['media_player.__unused_tts', '', none] }}"
+              - "{{ v_tts_engine_entity not in ['', none] }}"
+              - "{{ v_tts_media_player_entity not in ['', none] }}"
             then:
               - action: tts.speak
                 continue_on_error: true
