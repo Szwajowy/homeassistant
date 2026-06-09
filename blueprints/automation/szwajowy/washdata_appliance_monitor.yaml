@@ -9,6 +9,7 @@ blueprint:
     ## ⚡ Funkcje
     - 🔔 Powiadomienia o starcie, końcu i (opcjonalnie) przed końcem cyklu
     - 📨 Wspólny wybór encji `notify` przez UI dla wszystkich powiadomień
+    - 🔕 Opcjonalne globalne wyciszenie wszystkich powiadomień poza zalaniem
     - ⚙️ Dodatkowa akcja użytkownika po zakończeniu cyklu
     - 😴 Tryb końca cyklu: informacyjny lub akcjonowalny (Drzemka / Odrzuć)
     - 💧 Alerty zalania: informacyjne lub akcjonowalne (Wykonaj / Odrzuć)
@@ -82,6 +83,31 @@ blueprint:
           selector:
             entity:
               domain: notify
+              multiple: true
+
+        mute_non_flood_enabled:
+          name: "🔕 Włącz wyciszenie powiadomień (poza zalaniem)"
+          default: false
+          selector:
+            boolean:
+
+        mute_non_flood_entity:
+          name: "🧷 Encja aktywująca wyciszenie (opcjonalna)"
+          description: "Gdy ma stan on/true/home, wycisza wszystko poza zalaniem."
+          default: ""
+          selector:
+            entity:
+              filter:
+                - domain: binary_sensor
+                - domain: input_boolean
+
+        mute_non_flood_schedule_entities:
+          name: "🗓️ Harmonogramy wyciszenia (opcjonalne)"
+          description: "Gdy dowolny harmonogram ma stan on, wycisza wszystko poza zalaniem."
+          default: []
+          selector:
+            entity:
+              domain: schedule
               multiple: true
 
         start_enabled:
@@ -609,6 +635,9 @@ actions:
       v_finish_enabled: !input finish_enabled
       v_pre_end_enabled: !input pre_end_enabled
       v_finish_extra_action: !input finish_extra_action
+      v_mute_non_flood_enabled: !input mute_non_flood_enabled
+      v_mute_non_flood_entity: !input mute_non_flood_entity
+      v_mute_non_flood_schedule_entities: !input mute_non_flood_schedule_entities
 
       v_finish_actionable: !input finish_actionable
       v_snooze_interval_minutes: !input snooze_interval_minutes
@@ -696,6 +725,23 @@ actions:
           {{ ns.active }}
         {% endif %}
 
+      mute_non_flood_by_entity: >
+        {% if v_mute_non_flood_entity in ['', none] %}
+          false
+        {% else %}
+          {{ states(v_mute_non_flood_entity) in ['on', 'true', 'home'] }}
+        {% endif %}
+      mute_non_flood_by_schedule: >
+        {% set ns = namespace(active=false) %}
+        {% for sch in v_mute_non_flood_schedule_entities %}
+          {% if is_state(sch, 'on') %}
+            {% set ns.active = true %}
+          {% endif %}
+        {% endfor %}
+        {{ ns.active }}
+      non_flood_notifications_muted: >
+        {{ v_mute_non_flood_enabled and (mute_non_flood_by_entity or mute_non_flood_by_schedule) }}
+
       flood_effective_timeout_minutes: >
         {% if away_active and v_away_strategy == 'shorten_timeout' %}
           {{ v_away_timeout_minutes | int(0) }}
@@ -715,7 +761,7 @@ actions:
       - action: logbook.log
         data:
           name: "🧺 WashData Blueprint"
-          message: "Trigger: {{ trigger.id }} | Program: {{ program_name }} | away_active: {{ away_active }}"
+          message: "Trigger: {{ trigger.id }} | Program: {{ program_name }} | away_active: {{ away_active }} | muted_non_flood: {{ non_flood_notifications_muted }}"
 
   - choose:
       - conditions:
@@ -759,7 +805,7 @@ actions:
                   {{ ns.active }}
                 {% endif %}
 
-          - if: "{{ v_start_enabled }}"
+          - if: "{{ v_start_enabled and not non_flood_notifications_muted }}"
             then:
               - repeat:
                   for_each: "{{ notify_entities }}"
@@ -774,6 +820,7 @@ actions:
 
           - if:
               - "{{ v_tts_enabled and v_tts_start_enabled }}"
+              - "{{ not non_flood_notifications_muted }}"
               - "{{ tts_allowed }}"
               - "{{ v_tts_engine_entity not in ['', none] }}"
               - "{{ v_tts_media_player_entity not in ['', none] }}"
@@ -791,6 +838,7 @@ actions:
                     {{ t }}
 
           - if:
+              - "{{ not non_flood_notifications_muted }}"
               - "{{ v_expensive_enabled and (expensive_now or expensive_near) }}"
             then:
               - variables:
@@ -818,6 +866,7 @@ actions:
       - conditions:
           - "{{ trigger.id == 'cycle_pre_end' }}"
           - "{{ v_pre_end_enabled }}"
+          - "{{ not non_flood_notifications_muted }}"
           - "{{ states(v_wd_state_sensor) == 'Running' }}"
         sequence:
           - variables:
@@ -863,11 +912,11 @@ actions:
                 {{ t }}
 
           - if:
-              - "{{ v_delay_finish_until_home and (v_people_entities | length > 0) and not someone_home }}"
+              - "{{ v_delay_finish_until_home and not non_flood_notifications_muted and (v_people_entities | length > 0) and not someone_home }}"
             then:
               - wait_template: "{{ (v_people_entities | select('is_state', 'home') | list | length) > 0 }}"
 
-          - if: "{{ v_finish_enabled and not v_finish_actionable }}"
+          - if: "{{ v_finish_enabled and not v_finish_actionable and not non_flood_notifications_muted }}"
             then:
               - repeat:
                   for_each: "{{ notify_entities }}"
@@ -880,7 +929,7 @@ actions:
                         title: "{{ finish_title_rendered }}"
                         message: "{{ finish_message_rendered }}"
 
-          - if: "{{ v_finish_enabled and v_finish_actionable }}"
+          - if: "{{ v_finish_enabled and v_finish_actionable and not non_flood_notifications_muted }}"
             then:
               - variables:
                   finish_dismissed: false
@@ -927,6 +976,7 @@ actions:
 
           - if:
               - "{{ v_tts_enabled and v_tts_finish_enabled }}"
+              - "{{ not non_flood_notifications_muted }}"
               - "{{ tts_allowed }}"
               - "{{ v_tts_engine_entity not in ['', none] }}"
               - "{{ v_tts_media_player_entity not in ['', none] }}"
@@ -945,6 +995,7 @@ actions:
 
           - if:
               - "{{ v_maintenance_enabled }}"
+              - "{{ not non_flood_notifications_muted }}"
               - "{{ cycle_count | int(0) > 0 }}"
               - "{{ (cycle_count | int(0)) % (v_maintenance_every_cycles | int(1)) == 0 }}"
             then:
