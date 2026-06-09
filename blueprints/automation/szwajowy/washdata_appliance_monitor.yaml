@@ -1,0 +1,1144 @@
+blueprint:
+  name: "🧺 WashData — Pralka / Zmywarka: powiadomienia i bezpieczeństwo"
+  description: |
+    ## 🧺 Uniwersalny blueprint dla urządzeń monitorowanych przez ha_washdata
+
+    Jeden blueprint dla pralki i zmywarki (oraz innych urządzeń z WashData),
+    z konfigurowalnymi powiadomieniami i scenariuszami bezpieczeństwa.
+
+    ## ⚡ Funkcje
+    - 🔔 Powiadomienia o starcie, końcu i (opcjonalnie) przed końcem cyklu
+    - 😴 Tryb końca cyklu: informacyjny lub akcjonowalny (Drzemka / Odrzuć)
+    - 💧 Alerty zalania: informacyjne lub akcjonowalne (Wykonaj / Odrzuć)
+    - 🤖 Auto-akcja po timeout przy zalaniu (opcjonalnie)
+    - 👥 Opóźnienie powiadomień końca cyklu do powrotu domowników
+    - 🏝️ Tryb poza domem: krótszy timeout albo natychmiastowa akcja + głośniejszy alert
+    - 🛠️ Przypomnienia konserwacyjne co X cykli
+    - 🔊 Opcjonalny TTS
+    - 💸 Ostrzeżenie o starcie podczas / blisko drogiej strefy
+
+    ## ℹ️ Wskazówki
+    - W polach usług notify możesz podać wiele targetów: przecinek lub nowa linia.
+    - Przyciski akcji najlepiej działają z `notify.mobile_app_*`.
+
+  domain: automation
+  author: Szwajowy
+  source_url: https://github.com/Szwajowy/homeassistant/blob/master/blueprints/automation/szwajowy/washdata_appliance_monitor.yaml
+  homeassistant:
+    min_version: "2024.10.0"
+
+  input:
+    # =========================================================================
+    # 📱 SEKCJA 1: URZĄDZENIE WASHDATA
+    # =========================================================================
+    device_section:
+      name: "📱 Urządzenie (WashData)"
+      icon: mdi:washing-machine
+      description: "Wybierz podstawowe encje WashData monitorowanego urządzenia."
+      input:
+        wd_state_sensor:
+          name: "📊 Sensor stanu cyklu"
+          description: "Np. sensor.pralka_state (Running/Clean)."
+          selector:
+            entity:
+              domain: sensor
+
+        wd_program_sensor:
+          name: "🧾 Sensor programu"
+          description: "Np. sensor.pralka_program."
+          selector:
+            entity:
+              domain: sensor
+
+        wd_time_remaining_sensor:
+          name: "⏳ Sensor czasu pozostałego"
+          description: "Np. sensor.pralka_time_remaining."
+          selector:
+            entity:
+              domain: sensor
+
+        wd_cycle_count_sensor:
+          name: "🔁 Sensor licznika cykli (opcjonalny)"
+          description: >
+            Np. sensor.pralka_cycle_count.
+            Jeśli nie używasz przypomnień konserwacyjnych, zostaw domyślną wartość.
+          default: "sensor.__unused_cycle_count"
+          selector:
+            text:
+
+        cycle_end_state:
+          name: "✅ Stan końca cyklu"
+          description: "Dla WashData zwykle: Clean"
+          default: "Clean"
+          selector:
+            text:
+
+    # =========================================================================
+    # 🔔 SEKCJA 2: POWIADOMIENIA
+    # =========================================================================
+    notifications_section:
+      name: "🔔 Powiadomienia"
+      icon: mdi:bell-ring
+      description: >
+        Konfiguracja treści i targetów powiadomień.
+        W każdej liście możesz podać więcej niż jedną usługę notify.
+      input:
+        start_enabled:
+          name: "▶️ Włącz powiadomienie o starcie"
+          default: true
+          selector:
+            boolean:
+
+        start_notify_services:
+          name: "📨 Start — usługi notify (wiele)"
+          default: "notify.notify"
+          selector:
+            text:
+              multiline: true
+
+        start_title:
+          name: "📝 Start — tytuł"
+          description: "Placeholdery: {device}, {program}."
+          default: "{device} • Start cyklu"
+          selector:
+            text:
+
+        start_message:
+          name: "📝 Start — treść"
+          description: "Placeholdery: {device}, {program}."
+          default: "Urządzenie {device} rozpoczęło cykl. Program: {program}."
+          selector:
+            text:
+              multiline: true
+
+        finish_enabled:
+          name: "✅ Włącz powiadomienie o końcu"
+          default: true
+          selector:
+            boolean:
+
+        finish_notify_services:
+          name: "📨 Koniec — usługi notify (wiele)"
+          default: "notify.notify"
+          selector:
+            text:
+              multiline: true
+
+        finish_title:
+          name: "📝 Koniec — tytuł"
+          description: "Placeholdery: {device}, {program}, {duration_min}."
+          default: "{device} • Cykl zakończony"
+          selector:
+            text:
+
+        finish_message:
+          name: "📝 Koniec — treść"
+          description: "Placeholdery: {device}, {program}, {duration_min}."
+          default: "{device} zakończyło cykl. Program: {program}."
+          selector:
+            text:
+              multiline: true
+
+        pre_end_enabled:
+          name: "⏱️ Włącz powiadomienie przed końcem"
+          default: false
+          selector:
+            boolean:
+
+        pre_end_minutes:
+          name: "⏱️ Ile minut przed końcem"
+          default: 5
+          selector:
+            number:
+              min: 1
+              max: 60
+              step: 1
+              unit_of_measurement: "min"
+              mode: slider
+
+        pre_end_notify_services:
+          name: "📨 Przed końcem — usługi notify (wiele)"
+          default: "notify.notify"
+          selector:
+            text:
+              multiline: true
+
+        pre_end_title:
+          name: "📝 Przed końcem — tytuł"
+          description: "Placeholdery: {device}, {program}, {minutes_left}."
+          default: "{device} • Końcówka cyklu"
+          selector:
+            text:
+
+        pre_end_message:
+          name: "📝 Przed końcem — treść"
+          description: "Placeholdery: {device}, {program}, {minutes_left}."
+          default: "Do końca cyklu w {device} zostało ok. {minutes_left} min."
+          selector:
+            text:
+              multiline: true
+
+    # =========================================================================
+    # 😴 SEKCJA 3: DRZEMKA
+    # =========================================================================
+    snooze_section:
+      name: "😴 Drzemka i ponowienia"
+      icon: mdi:alarm-snooze
+      collapsed: true
+      description: >
+        Dla końca cyklu: tryb informacyjny (bez przycisków) lub akcjonowalny
+        (Drzemka / Odrzuć).
+      input:
+        finish_actionable:
+          name: "🎛️ Koniec cyklu z przyciskami"
+          default: true
+          selector:
+            boolean:
+
+        snooze_interval_minutes:
+          name: "🔁 Interwał ponawiania (drzemka)"
+          default: 15
+          selector:
+            number:
+              min: 1
+              max: 240
+              step: 1
+              unit_of_measurement: "min"
+              mode: slider
+
+        snooze_button_text:
+          name: "🔘 Tekst przycisku Drzemka"
+          default: "Przypomnij później"
+          selector:
+            text:
+
+        dismiss_button_text:
+          name: "🔘 Tekst przycisku Odrzuć"
+          default: "OK"
+          selector:
+            text:
+
+    # =========================================================================
+    # 💧 SEKCJA 4: ZALANIE
+    # =========================================================================
+    flood_section:
+      name: "💧 Zalanie"
+      icon: mdi:water-alert
+      collapsed: true
+      description: >
+        Powiadomienia o zalaniu i opcjonalna akcja bezpieczeństwa
+        (zakręcenie zaworu/wyłączenie urządzenia).
+      input:
+        flood_enabled:
+          name: "💧 Włącz monitoring zalania"
+          default: false
+          selector:
+            boolean:
+
+        flood_sensor_entity:
+          name: "🧪 Encja czujnika zalania"
+          description: >
+            Np. binary_sensor.pralnia_zalanie.
+            Jeśli nie używasz tej funkcji, zostaw domyślną wartość.
+          default: "binary_sensor.__unused_flood"
+          selector:
+            text:
+
+        flood_debounce_seconds:
+          name: "🧹 Anty-flapping (sekundy)"
+          description: "Czujnik musi być ON tyle sekund, by wywołać alarm."
+          default: 3
+          selector:
+            number:
+              min: 1
+              max: 30
+              step: 1
+              unit_of_measurement: "s"
+              mode: slider
+
+        flood_notify_services:
+          name: "📨 Zalanie — usługi notify (wiele)"
+          default: "notify.notify"
+          selector:
+            text:
+              multiline: true
+
+        flood_title:
+          name: "📝 Zalanie — tytuł"
+          description: "Placeholdery: {device}, {program}."
+          default: "🚨 {device} • Wykryto zalanie"
+          selector:
+            text:
+
+        flood_message:
+          name: "📝 Zalanie — treść"
+          description: "Placeholdery: {device}, {program}."
+          default: "Wykryto zalanie przy urządzeniu {device}."
+          selector:
+            text:
+              multiline: true
+
+        flood_actionable:
+          name: "🎛️ Zalanie z przyciskami Wykonaj/Odrzuć"
+          default: true
+          selector:
+            boolean:
+
+        flood_confirm_text:
+          name: "🔘 Tekst przycisku Wykonaj"
+          default: "Wykonaj akcję"
+          selector:
+            text:
+
+        flood_dismiss_text:
+          name: "🔘 Tekst przycisku Odrzuć"
+          default: "Odrzuć"
+          selector:
+            text:
+
+        flood_timeout_minutes:
+          name: "⏱️ Czas na reakcję przy zalaniu"
+          description: "0 = bez auto-akcji po czasie."
+          default: 5
+          selector:
+            number:
+              min: 0
+              max: 120
+              step: 1
+              unit_of_measurement: "min"
+              mode: slider
+
+        flood_action:
+          name: "🛑 Akcja bezpieczeństwa"
+          description: >
+            Wykona się po kliknięciu "Wykonaj akcję"
+            lub automatycznie po timeout (jeśli timeout > 0).
+          default: []
+          selector:
+            action:
+
+    # =========================================================================
+    # 👥 SEKCJA 5: OBECNOŚĆ
+    # =========================================================================
+    presence_section:
+      name: "👥 Obecność domowników"
+      icon: mdi:home-account
+      collapsed: true
+      description: "Opcjonalne czekanie z końcem cyklu do powrotu domowników."
+      input:
+        delay_finish_until_home:
+          name: "🏠 Czekaj z końcem cyklu aż ktoś wróci"
+          default: false
+          selector:
+            boolean:
+
+        people_entities:
+          name: "👤 Osoby do monitorowania"
+          default: []
+          selector:
+            entity:
+              domain: person
+              multiple: true
+
+        max_wait_home_minutes:
+          name: "⏳ Maksymalny czas czekania na powrót"
+          default: 180
+          selector:
+            number:
+              min: 1
+              max: 1440
+              step: 1
+              unit_of_measurement: "min"
+              mode: slider
+
+    # =========================================================================
+    # 🏝️ SEKCJA 6: TRYB POZA DOMEM
+    # =========================================================================
+    away_section:
+      name: "🏝️ Tryb poza domem"
+      icon: mdi:shield-alert
+      collapsed: true
+      description: >
+        Przy zalaniu poza domem możesz skrócić timeout lub wykonać akcję natychmiast.
+        Opcja "głośniejszy alert" doda payload high-priority dla wspieranych targetów.
+      input:
+        away_mode_enabled:
+          name: "🛡️ Włącz tryb poza domem"
+          default: true
+          selector:
+            boolean:
+
+        away_strategy:
+          name: "⚙️ Strategia przy zalaniu poza domem"
+          default: "shorten_timeout"
+          selector:
+            select:
+              options:
+                - label: "Skróć czas reakcji"
+                  value: "shorten_timeout"
+                - label: "Wykonaj akcję natychmiast"
+                  value: "immediate_action"
+                - label: "Bez zmian"
+                  value: "keep_default"
+
+        away_timeout_minutes:
+          name: "⏱️ Timeout poza domem"
+          default: 1
+          selector:
+            number:
+              min: 0
+              max: 60
+              step: 1
+              unit_of_measurement: "min"
+              mode: slider
+
+        away_loud_alert:
+          name: "📢 Głośniejszy alert (jeśli wspierane)"
+          default: true
+          selector:
+            boolean:
+
+    # =========================================================================
+    # 🛠️ SEKCJA 7: KONSERWACJA
+    # =========================================================================
+    maintenance_section:
+      name: "🛠️ Konserwacja"
+      icon: mdi:wrench-clock
+      collapsed: true
+      description: "Przypomnienie co X cykli na podstawie sensora cycle_count."
+      input:
+        maintenance_enabled:
+          name: "🔧 Włącz przypomnienia konserwacyjne"
+          default: false
+          selector:
+            boolean:
+
+        maintenance_every_cycles:
+          name: "🔁 Co ile cykli przypominać"
+          default: 30
+          selector:
+            number:
+              min: 1
+              max: 1000
+              step: 1
+              mode: box
+
+        maintenance_notify_services:
+          name: "📨 Konserwacja — usługi notify (wiele)"
+          default: "notify.notify"
+          selector:
+            text:
+              multiline: true
+
+        maintenance_title:
+          name: "📝 Konserwacja — tytuł"
+          description: "Placeholdery: {device}, {cycle_count}."
+          default: "🛠️ {device} • Czas na konserwację"
+          selector:
+            text:
+
+        maintenance_message:
+          name: "📝 Konserwacja — treść"
+          description: "Placeholdery: {device}, {cycle_count}."
+          default: "Urządzenie {device} ma {cycle_count} cykli. Rozważ konserwację."
+          selector:
+            text:
+              multiline: true
+
+    # =========================================================================
+    # 🔊 SEKCJA 8: TTS
+    # =========================================================================
+    tts_section:
+      name: "🔊 TTS"
+      icon: mdi:text-to-speech
+      collapsed: true
+      description: "Opcjonalne komunikaty głosowe dla startu, końca i zalania."
+      input:
+        tts_enabled:
+          name: "🔊 Włącz TTS"
+          default: false
+          selector:
+            boolean:
+
+        tts_engine_entity:
+          name: "🗣️ Encja TTS"
+          description: "Np. tts.google_translate_pl"
+          default: "tts.__unused_engine"
+          selector:
+            text:
+
+        tts_media_player_entity:
+          name: "📢 Media player"
+          description: "Np. media_player.kuchnia"
+          default: "media_player.__unused_tts"
+          selector:
+            text:
+
+        tts_start_enabled:
+          name: "▶️ TTS dla startu"
+          default: false
+          selector:
+            boolean:
+
+        tts_finish_enabled:
+          name: "✅ TTS dla końca"
+          default: true
+          selector:
+            boolean:
+
+        tts_flood_enabled:
+          name: "💧 TTS dla zalania"
+          default: true
+          selector:
+            boolean:
+
+        tts_start_message:
+          name: "🗣️ TTS start — treść"
+          description: "Placeholdery: {device}, {program}."
+          default: "Urządzenie {device} rozpoczęło cykl."
+          selector:
+            text:
+
+        tts_finish_message:
+          name: "🗣️ TTS koniec — treść"
+          description: "Placeholdery: {device}, {program}."
+          default: "Urządzenie {device} zakończyło cykl."
+          selector:
+            text:
+
+        tts_flood_message:
+          name: "🗣️ TTS zalanie — treść"
+          description: "Placeholdery: {device}, {program}."
+          default: "Uwaga. Wykryto zalanie przy urządzeniu {device}."
+          selector:
+            text:
+
+    # =========================================================================
+    # 💸 SEKCJA 9: DROGA STREFA
+    # =========================================================================
+    expensive_section:
+      name: "💸 Droga strefa"
+      icon: mdi:cash-alert
+      collapsed: true
+      description: >
+        Ostrzegaj, gdy cykl startuje podczas drogiej strefy lub blisko jej początku.
+      input:
+        expensive_enabled:
+          name: "💸 Włącz ostrzeżenie"
+          default: false
+          selector:
+            boolean:
+
+        expensive_now_entity:
+          name: "📈 Encja aktywnej drogiej strefy"
+          description: "Np. binary_sensor.droga_taryfa"
+          default: "binary_sensor.__unused_expensive_now"
+          selector:
+            text:
+
+        expensive_now_state:
+          name: "🏷️ Wartość oznaczająca drogą strefę"
+          default: "on"
+          selector:
+            text:
+
+        expensive_next_start_entity:
+          name: "🕒 Encja następnego startu drogiej strefy"
+          description: "Sensor z timestamp; opcjonalny."
+          default: "sensor.__unused_expensive_next_start"
+          selector:
+            text:
+
+        expensive_window_minutes:
+          name: "⏳ Okno ostrzeżenia (minuty)"
+          default: 30
+          selector:
+            number:
+              min: 1
+              max: 240
+              step: 1
+              unit_of_measurement: "min"
+              mode: slider
+
+        expensive_notify_services:
+          name: "📨 Droga strefa — usługi notify (wiele)"
+          default: "notify.notify"
+          selector:
+            text:
+              multiline: true
+
+        expensive_title:
+          name: "📝 Droga strefa — tytuł"
+          description: "Placeholdery: {device}, {program}."
+          default: "💸 {device} • Uwaga na drogą strefę"
+          selector:
+            text:
+
+        expensive_message:
+          name: "📝 Droga strefa — treść"
+          description: "Placeholdery: {device}, {program}."
+          default: "{device} wystartowało podczas lub blisko początku drogiej strefy."
+          selector:
+            text:
+              multiline: true
+
+    # =========================================================================
+    # 🔧 SEKCJA 10: ZAAWANSOWANE
+    # =========================================================================
+    advanced_section:
+      name: "🔧 Zaawansowane"
+      icon: mdi:cog
+      collapsed: true
+      description: "Dodatkowe ustawienia globalne."
+      input:
+        enable_logging:
+          name: "📝 Włącz logowanie do logbook"
+          default: false
+          selector:
+            boolean:
+
+        blocking_condition:
+          name: "🚫 Globalny warunek blokujący"
+          description: "Jeśli false, blueprint nie wykona akcji."
+          default: []
+          selector:
+            condition:
+
+mode: parallel
+max: 20
+max_exceeded: silent
+
+triggers:
+  - trigger: state
+    entity_id: !input wd_state_sensor
+    to: "Running"
+    id: cycle_start
+
+  - trigger: state
+    entity_id: !input wd_state_sensor
+    to: !input cycle_end_state
+    id: cycle_end
+
+  - trigger: numeric_state
+    entity_id: !input wd_time_remaining_sensor
+    below: !input pre_end_minutes
+    id: cycle_pre_end
+
+  - trigger: state
+    entity_id: !input flood_sensor_entity
+    to: "on"
+    for:
+      seconds: !input flood_debounce_seconds
+    id: flood_on
+
+conditions: !input blocking_condition
+
+actions:
+  - variables:
+      v_enable_logging: !input enable_logging
+
+      v_wd_state_sensor: !input wd_state_sensor
+      v_wd_program_sensor: !input wd_program_sensor
+      v_wd_time_remaining_sensor: !input wd_time_remaining_sensor
+      v_wd_cycle_count_sensor: !input wd_cycle_count_sensor
+      v_cycle_end_state: !input cycle_end_state
+
+      v_start_enabled: !input start_enabled
+      v_finish_enabled: !input finish_enabled
+      v_pre_end_enabled: !input pre_end_enabled
+
+      v_finish_actionable: !input finish_actionable
+      v_snooze_interval_minutes: !input snooze_interval_minutes
+      v_snooze_button_text: !input snooze_button_text
+      v_dismiss_button_text: !input dismiss_button_text
+
+      v_flood_enabled: !input flood_enabled
+      v_flood_sensor_entity: !input flood_sensor_entity
+      v_flood_actionable: !input flood_actionable
+      v_flood_timeout_minutes: !input flood_timeout_minutes
+      v_flood_confirm_text: !input flood_confirm_text
+      v_flood_dismiss_text: !input flood_dismiss_text
+
+      v_delay_finish_until_home: !input delay_finish_until_home
+      v_people_entities: !input people_entities
+      v_max_wait_home_minutes: !input max_wait_home_minutes
+
+      v_away_mode_enabled: !input away_mode_enabled
+      v_away_strategy: !input away_strategy
+      v_away_timeout_minutes: !input away_timeout_minutes
+      v_away_loud_alert: !input away_loud_alert
+
+      v_maintenance_enabled: !input maintenance_enabled
+      v_maintenance_every_cycles: !input maintenance_every_cycles
+
+      v_tts_enabled: !input tts_enabled
+      v_tts_engine_entity: !input tts_engine_entity
+      v_tts_media_player_entity: !input tts_media_player_entity
+      v_tts_start_enabled: !input tts_start_enabled
+      v_tts_finish_enabled: !input tts_finish_enabled
+      v_tts_flood_enabled: !input tts_flood_enabled
+
+      v_expensive_enabled: !input expensive_enabled
+      v_expensive_now_entity: !input expensive_now_entity
+      v_expensive_now_state: !input expensive_now_state
+      v_expensive_next_start_entity: !input expensive_next_start_entity
+      v_expensive_window_minutes: !input expensive_window_minutes
+
+      v_start_title: !input start_title
+      v_start_message: !input start_message
+      v_finish_title: !input finish_title
+      v_finish_message: !input finish_message
+      v_pre_end_title: !input pre_end_title
+      v_pre_end_message: !input pre_end_message
+      v_flood_title: !input flood_title
+      v_flood_message: !input flood_message
+      v_maintenance_title: !input maintenance_title
+      v_maintenance_message: !input maintenance_message
+      v_expensive_title: !input expensive_title
+      v_expensive_message: !input expensive_message
+      v_tts_start_message: !input tts_start_message
+      v_tts_finish_message: !input tts_finish_message
+      v_tts_flood_message: !input tts_flood_message
+
+      v_start_notify_services_raw: !input start_notify_services
+      v_finish_notify_services_raw: !input finish_notify_services
+      v_pre_end_notify_services_raw: !input pre_end_notify_services
+      v_flood_notify_services_raw: !input flood_notify_services
+      v_maintenance_notify_services_raw: !input maintenance_notify_services
+      v_expensive_notify_services_raw: !input expensive_notify_services
+
+      device_name: "{{ state_attr(v_wd_state_sensor, 'friendly_name') or v_wd_state_sensor }}"
+      program_name: "{{ states(v_wd_program_sensor) }}"
+      minutes_left: "{{ states(v_wd_time_remaining_sensor) | int(0) }}"
+      cycle_count: "{{ states(v_wd_cycle_count_sensor) | int(0) }}"
+      duration_min: >
+        {% set d1 = state_attr(v_wd_state_sensor, 'duration_minutes') %}
+        {% set d2 = state_attr(v_wd_state_sensor, 'last_cycle_duration_minutes') %}
+        {{ (d1 if d1 is not none else (d2 if d2 is not none else 0)) | int(0) }}
+
+      someone_home: "{{ (v_people_entities | length > 0) and ((v_people_entities | select('is_state', 'home') | list | length) > 0) }}"
+      all_away: "{{ v_away_mode_enabled and (v_people_entities | length > 0) and not someone_home }}"
+
+      flood_effective_timeout_minutes: >
+        {% if all_away and v_away_strategy == 'shorten_timeout' %}
+          {{ v_away_timeout_minutes | int(0) }}
+        {% else %}
+          {{ v_flood_timeout_minutes | int(0) }}
+        {% endif %}
+
+      action_snooze: "WASH_SNOOZE_{{ context.id }}"
+      action_dismiss: "WASH_DISMISS_{{ context.id }}"
+      action_flood_confirm: "WASH_FLOOD_CONFIRM_{{ context.id }}"
+      action_flood_dismiss: "WASH_FLOOD_DISMISS_{{ context.id }}"
+
+      notify_start_services: >
+        {% set raw = (v_start_notify_services_raw | string).replace('\n', ',') %}
+        {% set ns = namespace(lst=[]) %}
+        {% for s in raw.split(',') %}
+          {% set x = s | trim %}
+          {% if x != '' %}{% set ns.lst = ns.lst + [x] %}{% endif %}
+        {% endfor %}
+        {{ ns.lst }}
+
+      notify_finish_services: >
+        {% set raw = (v_finish_notify_services_raw | string).replace('\n', ',') %}
+        {% set ns = namespace(lst=[]) %}
+        {% for s in raw.split(',') %}
+          {% set x = s | trim %}
+          {% if x != '' %}{% set ns.lst = ns.lst + [x] %}{% endif %}
+        {% endfor %}
+        {{ ns.lst }}
+
+      notify_pre_end_services: >
+        {% set raw = (v_pre_end_notify_services_raw | string).replace('\n', ',') %}
+        {% set ns = namespace(lst=[]) %}
+        {% for s in raw.split(',') %}
+          {% set x = s | trim %}
+          {% if x != '' %}{% set ns.lst = ns.lst + [x] %}{% endif %}
+        {% endfor %}
+        {{ ns.lst }}
+
+      notify_flood_services: >
+        {% set raw = (v_flood_notify_services_raw | string).replace('\n', ',') %}
+        {% set ns = namespace(lst=[]) %}
+        {% for s in raw.split(',') %}
+          {% set x = s | trim %}
+          {% if x != '' %}{% set ns.lst = ns.lst + [x] %}{% endif %}
+        {% endfor %}
+        {{ ns.lst }}
+
+      notify_maintenance_services: >
+        {% set raw = (v_maintenance_notify_services_raw | string).replace('\n', ',') %}
+        {% set ns = namespace(lst=[]) %}
+        {% for s in raw.split(',') %}
+          {% set x = s | trim %}
+          {% if x != '' %}{% set ns.lst = ns.lst + [x] %}{% endif %}
+        {% endfor %}
+        {{ ns.lst }}
+
+      notify_expensive_services: >
+        {% set raw = (v_expensive_notify_services_raw | string).replace('\n', ',') %}
+        {% set ns = namespace(lst=[]) %}
+        {% for s in raw.split(',') %}
+          {% set x = s | trim %}
+          {% if x != '' %}{% set ns.lst = ns.lst + [x] %}{% endif %}
+        {% endfor %}
+        {{ ns.lst }}
+
+  - if: "{{ v_enable_logging }}"
+    then:
+      - action: logbook.log
+        data:
+          name: "🧺 WashData Blueprint"
+          message: "Trigger: {{ trigger.id }} | Program: {{ program_name }} | all_away: {{ all_away }}"
+
+  - choose:
+      - conditions:
+          - "{{ trigger.id == 'cycle_start' }}"
+        sequence:
+          - variables:
+              start_title_rendered: >
+                {% set t = v_start_title %}
+                {% set t = t | replace('{device}', device_name) %}
+                {% set t = t | replace('{program}', program_name) %}
+                {{ t }}
+              start_message_rendered: >
+                {% set t = v_start_message %}
+                {% set t = t | replace('{device}', device_name) %}
+                {% set t = t | replace('{program}', program_name) %}
+                {{ t }}
+
+              expensive_now: >
+                {% if v_expensive_now_entity in ['binary_sensor.__unused_expensive_now', '', none] %}
+                  false
+                {% else %}
+                  {{ states(v_expensive_now_entity) == v_expensive_now_state }}
+                {% endif %}
+              expensive_delta_min: >
+                {% if v_expensive_next_start_entity in ['sensor.__unused_expensive_next_start', '', none] %}
+                  99999
+                {% else %}
+                  {% set st = states(v_expensive_next_start_entity) %}
+                  {% if st in ['unknown', 'unavailable', 'none', ''] %}
+                    99999
+                  {% else %}
+                    {{ ((as_timestamp(st, 0) - as_timestamp(now())) / 60) | int(99999) }}
+                  {% endif %}
+                {% endif %}
+              expensive_near: >
+                {{ expensive_delta_min | int(99999) >= 0 and expensive_delta_min | int(99999) <= (v_expensive_window_minutes | int(0)) }}
+
+          - if: "{{ v_start_enabled }}"
+            then:
+              - repeat:
+                  for_each: "{{ notify_start_services }}"
+                  sequence:
+                    - action: "{{ repeat.item }}"
+                      continue_on_error: true
+                      data:
+                        title: "{{ start_title_rendered }}"
+                        message: "{{ start_message_rendered }}"
+
+          - if:
+              - "{{ v_tts_enabled and v_tts_start_enabled }}"
+              - "{{ v_tts_engine_entity not in ['tts.__unused_engine', '', none] }}"
+              - "{{ v_tts_media_player_entity not in ['media_player.__unused_tts', '', none] }}"
+            then:
+              - action: tts.speak
+                continue_on_error: true
+                target:
+                  entity_id: "{{ v_tts_engine_entity }}"
+                data:
+                  media_player_entity_id: "{{ v_tts_media_player_entity }}"
+                  message: >
+                    {% set t = v_tts_start_message %}
+                    {% set t = t | replace('{device}', device_name) %}
+                    {% set t = t | replace('{program}', program_name) %}
+                    {{ t }}
+
+          - if:
+              - "{{ v_expensive_enabled and (expensive_now or expensive_near) }}"
+            then:
+              - variables:
+                  expensive_title_rendered: >
+                    {% set t = v_expensive_title %}
+                    {% set t = t | replace('{device}', device_name) %}
+                    {% set t = t | replace('{program}', program_name) %}
+                    {{ t }}
+                  expensive_message_rendered: >
+                    {% set t = v_expensive_message %}
+                    {% set t = t | replace('{device}', device_name) %}
+                    {% set t = t | replace('{program}', program_name) %}
+                    {{ t }}
+              - repeat:
+                  for_each: "{{ notify_expensive_services }}"
+                  sequence:
+                    - action: "{{ repeat.item }}"
+                      continue_on_error: true
+                      data:
+                        title: "{{ expensive_title_rendered }}"
+                        message: "{{ expensive_message_rendered }}"
+
+      - conditions:
+          - "{{ trigger.id == 'cycle_pre_end' }}"
+          - "{{ v_pre_end_enabled }}"
+          - "{{ states(v_wd_state_sensor) == 'Running' }}"
+        sequence:
+          - variables:
+              pre_end_title_rendered: >
+                {% set t = v_pre_end_title %}
+                {% set t = t | replace('{device}', device_name) %}
+                {% set t = t | replace('{program}', program_name) %}
+                {% set t = t | replace('{minutes_left}', minutes_left | string) %}
+                {{ t }}
+              pre_end_message_rendered: >
+                {% set t = v_pre_end_message %}
+                {% set t = t | replace('{device}', device_name) %}
+                {% set t = t | replace('{program}', program_name) %}
+                {% set t = t | replace('{minutes_left}', minutes_left | string) %}
+                {{ t }}
+
+          - repeat:
+              for_each: "{{ notify_pre_end_services }}"
+              sequence:
+                - action: "{{ repeat.item }}"
+                  continue_on_error: true
+                  data:
+                    title: "{{ pre_end_title_rendered }}"
+                    message: "{{ pre_end_message_rendered }}"
+
+      - conditions:
+          - "{{ trigger.id == 'cycle_end' }}"
+        sequence:
+          - variables:
+              finish_title_rendered: >
+                {% set t = v_finish_title %}
+                {% set t = t | replace('{device}', device_name) %}
+                {% set t = t | replace('{program}', program_name) %}
+                {% set t = t | replace('{duration_min}', duration_min | string) %}
+                {{ t }}
+              finish_message_rendered: >
+                {% set t = v_finish_message %}
+                {% set t = t | replace('{device}', device_name) %}
+                {% set t = t | replace('{program}', program_name) %}
+                {% set t = t | replace('{duration_min}', duration_min | string) %}
+                {{ t }}
+
+          - if:
+              - "{{ v_delay_finish_until_home and (v_people_entities | length > 0) and not someone_home }}"
+            then:
+              - wait_template: "{{ (v_people_entities | select('is_state', 'home') | list | length) > 0 }}"
+                timeout:
+                  minutes: "{{ v_max_wait_home_minutes }}"
+                continue_on_timeout: true
+
+          - if: "{{ v_finish_enabled and not v_finish_actionable }}"
+            then:
+              - repeat:
+                  for_each: "{{ notify_finish_services }}"
+                  sequence:
+                    - action: "{{ repeat.item }}"
+                      continue_on_error: true
+                      data:
+                        title: "{{ finish_title_rendered }}"
+                        message: "{{ finish_message_rendered }}"
+
+          - if: "{{ v_finish_enabled and v_finish_actionable }}"
+            then:
+              - variables:
+                  finish_dismissed: false
+              - repeat:
+                  sequence:
+                    - repeat:
+                        for_each: "{{ notify_finish_services }}"
+                        sequence:
+                          - action: "{{ repeat.item }}"
+                            continue_on_error: true
+                            data:
+                              title: "{{ finish_title_rendered }}"
+                              message: "{{ finish_message_rendered }}"
+                              data:
+                                actions:
+                                  - action: "{{ action_snooze }}"
+                                    title: "{{ v_snooze_button_text }}"
+                                  - action: "{{ action_dismiss }}"
+                                    title: "{{ v_dismiss_button_text }}"
+
+                    - wait_for_trigger:
+                        - trigger: event
+                          event_type: mobile_app_notification_action
+                      timeout:
+                        minutes: "{{ v_snooze_interval_minutes }}"
+                      continue_on_timeout: true
+
+                    - choose:
+                        - conditions:
+                            - "{{ wait.trigger != none and wait.trigger.event.data.action == action_dismiss }}"
+                          sequence:
+                            - variables:
+                                finish_dismissed: true
+
+                        - conditions:
+                            - "{{ wait.trigger != none and wait.trigger.event.data.action == action_snooze }}"
+                          sequence:
+                            - delay:
+                                minutes: "{{ v_snooze_interval_minutes }}"
+                  until:
+                    - "{{ finish_dismissed }}"
+
+          - if:
+              - "{{ v_tts_enabled and v_tts_finish_enabled }}"
+              - "{{ v_tts_engine_entity not in ['tts.__unused_engine', '', none] }}"
+              - "{{ v_tts_media_player_entity not in ['media_player.__unused_tts', '', none] }}"
+            then:
+              - action: tts.speak
+                continue_on_error: true
+                target:
+                  entity_id: "{{ v_tts_engine_entity }}"
+                data:
+                  media_player_entity_id: "{{ v_tts_media_player_entity }}"
+                  message: >
+                    {% set t = v_tts_finish_message %}
+                    {% set t = t | replace('{device}', device_name) %}
+                    {% set t = t | replace('{program}', program_name) %}
+                    {{ t }}
+
+          - if:
+              - "{{ v_maintenance_enabled }}"
+              - "{{ cycle_count | int(0) > 0 }}"
+              - "{{ (cycle_count | int(0)) % (v_maintenance_every_cycles | int(1)) == 0 }}"
+            then:
+              - variables:
+                  maintenance_title_rendered: >
+                    {% set t = v_maintenance_title %}
+                    {% set t = t | replace('{device}', device_name) %}
+                    {% set t = t | replace('{cycle_count}', cycle_count | string) %}
+                    {{ t }}
+                  maintenance_message_rendered: >
+                    {% set t = v_maintenance_message %}
+                    {% set t = t | replace('{device}', device_name) %}
+                    {% set t = t | replace('{cycle_count}', cycle_count | string) %}
+                    {{ t }}
+              - repeat:
+                  for_each: "{{ notify_maintenance_services }}"
+                  sequence:
+                    - action: "{{ repeat.item }}"
+                      continue_on_error: true
+                      data:
+                        title: "{{ maintenance_title_rendered }}"
+                        message: "{{ maintenance_message_rendered }}"
+
+      - conditions:
+          - "{{ trigger.id == 'flood_on' }}"
+          - "{{ v_flood_enabled }}"
+          - "{{ v_flood_sensor_entity != 'binary_sensor.__unused_flood' }}"
+        sequence:
+          - variables:
+              flood_title_rendered: >
+                {% set t = v_flood_title %}
+                {% set t = t | replace('{device}', device_name) %}
+                {% set t = t | replace('{program}', program_name) %}
+                {{ t }}
+              flood_message_rendered: >
+                {% set t = v_flood_message %}
+                {% set t = t | replace('{device}', device_name) %}
+                {% set t = t | replace('{program}', program_name) %}
+                {{ t }}
+              away_immediate: "{{ all_away and v_away_strategy == 'immediate_action' }}"
+              use_loud_payload: "{{ all_away and v_away_loud_alert }}"
+
+          - choose:
+              - conditions:
+                  - "{{ use_loud_payload }}"
+                sequence:
+                  - repeat:
+                      for_each: "{{ notify_flood_services }}"
+                      sequence:
+                        - action: "{{ repeat.item }}"
+                          continue_on_error: true
+                          data:
+                            title: "{{ flood_title_rendered }}"
+                            message: "{{ flood_message_rendered }}"
+                            data:
+                              priority: high
+                              ttl: 0
+                              importance: high
+                              channel: Alarmy_domowe
+                              persistent: true
+                              sticky: true
+                              actions: >
+                                {% if v_flood_actionable %}
+                                  [
+                                    {"action": "{{ action_flood_confirm }}", "title": "{{ v_flood_confirm_text }}"},
+                                    {"action": "{{ action_flood_dismiss }}", "title": "{{ v_flood_dismiss_text }}"}
+                                  ]
+                                {% else %}
+                                  []
+                                {% endif %}
+
+            default:
+              - repeat:
+                  for_each: "{{ notify_flood_services }}"
+                  sequence:
+                    - action: "{{ repeat.item }}"
+                      continue_on_error: true
+                      data:
+                        title: "{{ flood_title_rendered }}"
+                        message: "{{ flood_message_rendered }}"
+                        data:
+                          actions: >
+                            {% if v_flood_actionable %}
+                              [
+                                {"action": "{{ action_flood_confirm }}", "title": "{{ v_flood_confirm_text }}"},
+                                {"action": "{{ action_flood_dismiss }}", "title": "{{ v_flood_dismiss_text }}"}
+                              ]
+                            {% else %}
+                              []
+                            {% endif %}
+
+          - choose:
+              - conditions:
+                  - "{{ away_immediate }}"
+                sequence: !input flood_action
+
+              - conditions:
+                  - "{{ v_flood_actionable and not away_immediate }}"
+                sequence:
+                  - wait_for_trigger:
+                      - trigger: event
+                        event_type: mobile_app_notification_action
+                    timeout:
+                      minutes: "{{ flood_effective_timeout_minutes }}"
+                    continue_on_timeout: true
+
+                  - choose:
+                      - conditions:
+                          - "{{ wait.trigger != none and wait.trigger.event.data.action == action_flood_confirm }}"
+                        sequence: !input flood_action
+
+                      - conditions:
+                          - "{{ wait.trigger == none and (flood_effective_timeout_minutes | int(0)) > 0 }}"
+                        sequence: !input flood_action
+
+                      - conditions:
+                          - "{{ wait.trigger != none and wait.trigger.event.data.action == action_flood_dismiss }}"
+                        sequence: []
+
+            default: []
+
+          - if:
+              - "{{ v_tts_enabled and v_tts_flood_enabled }}"
+              - "{{ v_tts_engine_entity not in ['tts.__unused_engine', '', none] }}"
+              - "{{ v_tts_media_player_entity not in ['media_player.__unused_tts', '', none] }}"
+            then:
+              - action: tts.speak
+                continue_on_error: true
+                target:
+                  entity_id: "{{ v_tts_engine_entity }}"
+                data:
+                  media_player_entity_id: "{{ v_tts_media_player_entity }}"
+                  message: >
+                    {% set t = v_tts_flood_message %}
+                    {% set t = t | replace('{device}', device_name) %}
+                    {% set t = t | replace('{program}', program_name) %}
+                    {{ t }}
