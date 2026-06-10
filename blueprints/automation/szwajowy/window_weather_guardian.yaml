@@ -1030,7 +1030,7 @@ actions:
 
       advisor_tick: "{{ (now().minute % (v_advisor_check_interval_minutes | int(1))) == 0 }}"
 
-      should_send_precip: "{{ v_precip_alert_enabled and v_notify_precip_enabled and allow_precip_notifications and night_active and (open_windows_count | int(0) > 0) and precip_detected }}"
+      should_send_precip: "{{ v_precip_alert_enabled and v_notify_precip_enabled and allow_precip_notifications and (open_windows_count | int(0) > 0) and precip_detected }}"
       should_send_away: "{{ v_away_alert_enabled and v_notify_away_enabled and allow_away_notifications and (trigger.id != 'heartbeat') and away_cooldown_ok and (open_windows_count | int(0) > 0) and all_away }}"
       should_send_advisor_open: "{{ v_notify_advisor_enabled and allow_advisor_notifications and advisor_recommend_open and (trigger.id != 'heartbeat' or advisor_tick) }}"
       should_send_advisor_close: "{{ v_notify_advisor_enabled and allow_advisor_notifications and advisor_recommend_close and (trigger.id != 'heartbeat' or advisor_tick) }}"
