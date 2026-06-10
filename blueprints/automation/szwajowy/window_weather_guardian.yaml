@@ -1,0 +1,2188 @@
+blueprint:
+  name: "🪟 Strażnik Okien — pogoda, obecność i doradca wietrzenia"
+  description: |
+    ## 🪟 Inteligentny blueprint okienny
+
+    Monitoruje czujniki okien i wysyła podpowiedzi lub alerty w oparciu o pogodę,
+    obecność domowników i parametry powietrza.
+
+    ## ⚡ Funkcje V1
+    - 🌧️ Alert: noc + opady (deszcz/śnieg) + otwarte okna
+    - 🏝️ Alert: wszyscy poza domem + otwarte okna
+    - 🌡️ Doradca: otworzyć / zamknąć okno na podstawie temperatury
+    - 💧 Opcjonalna korekta doradcy o wilgotność
+    - 🫁 Opcjonalna korekta doradcy o CO2
+    - 🌙 Nocny raport otwartych okien
+    - 📨 Notify entities z nadpisywaniem (tag/topic)
+    - 😴 Opcjonalne drzemka / odrzuć dla alertów niekrytycznych
+    - 🔕 Konfigurowalna cisza przez schedule/entity + wyjątki
+    - 🔊 Opcjonalny TTS z własnym harmonogramem
+
+    ## ℹ️ Wskazówki
+    - Krytyczne alerty pogodowe mają osobny tag niż komunikaty doradcy/obecności.
+    - Jeśli nie ustawisz opcji dodatkowych (wilgotność/CO2), doradca działa tylko na temperaturze.
+
+  domain: automation
+  author: Szwajowy
+  source_url: https://github.com/Szwajowy/homeassistant/blob/master/blueprints/automation/szwajowy/window_weather_guardian.yaml
+  homeassistant:
+    min_version: "2024.10.0"
+
+  input:
+    # =========================================================================
+    # 🪟 SEKCJA 1: OKNA
+    # =========================================================================
+    windows_section:
+      name: "🪟 Okna"
+      icon: mdi:window-closed
+      description: "Wybierz czujniki otwarcia okien do monitorowania."
+      input:
+        window_sensors:
+          name: "📍 Czujniki okien"
+          default: []
+          selector:
+            entity:
+              domain: binary_sensor
+              multiple: true
+
+        windows_reaction_time_open:
+          name: "⏱️ Debounce otwarcia"
+          description: "Okna muszą być otwarte tyle czasu, by wywołać reakcję."
+          default:
+            hours: 0
+            minutes: 0
+            seconds: 20
+          selector:
+            time:
+
+        windows_reaction_time_close:
+          name: "⏱️ Debounce zamknięcia"
+          description: "Okna muszą być zamknięte tyle czasu, by wywołać reakcję."
+          default:
+            hours: 0
+            minutes: 0
+            seconds: 20
+          selector:
+            time:
+
+    # =========================================================================
+    # 🌦️ SEKCJA 2: POGODA
+    # =========================================================================
+    weather_section:
+      name: "🌦️ Pogoda"
+      icon: mdi:weather-partly-rainy
+      description: "Konfiguracja warunków opadów i nocnego alertu okien."
+      input:
+        weather_entity:
+          name: "🌤️ Encja weather"
+          selector:
+            entity:
+              domain: weather
+
+        precip_alert_enabled:
+          name: "🌧️ Włącz alert opadów dla otwartych okien"
+          default: true
+          selector:
+            boolean:
+
+        alert_rain:
+          name: "🌧️ Uwzględnij deszcz"
+          default: true
+          selector:
+            boolean:
+
+        alert_snow:
+          name: "❄️ Uwzględnij śnieg"
+          default: true
+          selector:
+            boolean:
+
+        precip_forecast_minutes:
+          name: "⏳ Ile minut naprzód sprawdzać forecast"
+          description: "0 = tylko aktualna pogoda (bez forecast)."
+          default: 60
+          selector:
+            number:
+              min: 0
+              max: 360
+              step: 5
+              unit_of_measurement: "min"
+              mode: slider
+
+        night_mode_schedule:
+          name: "🌙 Harmonogram nocy (opcjonalny)"
+          description: "Jeśli pusty, noc = sun.sun poniżej horyzontu."
+          default: ""
+          selector:
+            entity:
+              domain: schedule
+
+        night_mode_entity:
+          name: "🌙 Encja nocy (opcjonalna)"
+          description: "Gdy on/true/home, traktowane jako noc."
+          default: ""
+          selector:
+            entity:
+              filter:
+                - domain: binary_sensor
+                - domain: input_boolean
+
+    # =========================================================================
+    # 👥 SEKCJA 3: OBECNOŚĆ
+    # =========================================================================
+    presence_section:
+      name: "👥 Obecność"
+      icon: mdi:account-group
+      collapsed: true
+      description: "Alert, gdy wszyscy opuścili dom i okna zostały otwarte."
+      input:
+        away_alert_enabled:
+          name: "🏝️ Włącz alert all-away + otwarte okna"
+          default: true
+          selector:
+            boolean:
+
+        people_entities:
+          name: "👤 Osoby do monitorowania"
+          default: []
+          selector:
+            entity:
+              domain: person
+              multiple: true
+
+        away_override_entity:
+          name: "🧷 Dodatkowa encja aktywująca all-away (opcjonalna)"
+          default: ""
+          selector:
+            entity:
+              filter:
+                - domain: binary_sensor
+                - domain: input_boolean
+
+    # =========================================================================
+    # 🌡️ SEKCJA 4: DORADCA WIETRZENIA
+    # =========================================================================
+    advisor_section:
+      name: "🌡️ Doradca wietrzenia"
+      icon: mdi:air-filter
+      collapsed: true
+      description: "Podpowiedzi kiedy warto otworzyć lub zamknąć okna."
+      input:
+        advisor_enabled:
+          name: "🧠 Włącz doradcę"
+          default: true
+          selector:
+            boolean:
+
+        advisor_check_interval_minutes:
+          name: "🔁 Co ile minut sprawdzać doradcę"
+          default: 10
+          selector:
+            number:
+              min: 1
+              max: 120
+              step: 1
+              unit_of_measurement: "min"
+              mode: slider
+
+        indoor_temperature_sensor:
+          name: "🏠 Temperatura wewnętrzna (główna)"
+          default: ""
+          selector:
+            entity:
+              domain: sensor
+
+        indoor_temperature_sensors:
+          name: "🏠 Temperatury wewnętrzne (wiele, opcjonalne)"
+          description: "Jeśli wybierzesz kilka, użyta będzie średnia."
+          default: []
+          selector:
+            entity:
+              domain: sensor
+              multiple: true
+
+        outdoor_temperature_sensor:
+          name: "🌡️ Temperatura zewnętrzna"
+          default: ""
+          selector:
+            entity:
+              domain: sensor
+
+        open_when_cooler_delta:
+          name: "🟢 Otwórz gdy na zewnątrz chłodniej o min."
+          default: 1.0
+          selector:
+            number:
+              min: 0
+              max: 10
+              step: 0.1
+              unit_of_measurement: "°C"
+              mode: slider
+
+        avoid_when_hotter_delta:
+          name: "🔴 Zamknij / nie otwieraj gdy na zewnątrz cieplej o min."
+          default: 1.0
+          selector:
+            number:
+              min: 0
+              max: 10
+              step: 0.1
+              unit_of_measurement: "°C"
+              mode: slider
+
+        allow_warming_when_indoor_below:
+          name: "🧊 Wyjątek: pozwól dogrzać, jeśli w domu poniżej"
+          default: 19.0
+          selector:
+            number:
+              min: 10
+              max: 25
+              step: 0.5
+              unit_of_measurement: "°C"
+              mode: slider
+
+        use_humidity_guard:
+          name: "💧 Uwzględnij wilgotność"
+          default: false
+          selector:
+            boolean:
+
+        indoor_humidity_sensor:
+          name: "🏠 Wilgotność wewnętrzna (opcjonalna)"
+          default: ""
+          selector:
+            entity:
+              domain: sensor
+
+        outdoor_humidity_sensor:
+          name: "🌦️ Wilgotność zewnętrzna (opcjonalna)"
+          default: ""
+          selector:
+            entity:
+              domain: sensor
+
+        humidity_outdoor_higher_by:
+          name: "💧 Blokuj otwieranie gdy wilgotność zewn. wyższa o"
+          default: 10
+          selector:
+            number:
+              min: 0
+              max: 40
+              step: 1
+              unit_of_measurement: "%"
+              mode: slider
+
+        use_co2_guard:
+          name: "🫁 Uwzględnij CO2"
+          default: false
+          selector:
+            boolean:
+
+        indoor_co2_sensor:
+          name: "🫁 Sensor CO2 (opcjonalny)"
+          default: ""
+          selector:
+            entity:
+              domain: sensor
+
+        co2_threshold:
+          name: "🫁 Próg CO2 dla rekomendacji otwarcia"
+          default: 1000
+          selector:
+            number:
+              min: 400
+              max: 3000
+              step: 50
+              unit_of_measurement: "ppm"
+              mode: slider
+
+    # =========================================================================
+    # 🔔 SEKCJA 5: POWIADOMIENIA
+    # =========================================================================
+    notifications_section:
+      name: "🔔 Powiadomienia"
+      icon: mdi:bell-ring
+      description: "Wspólne kanały, treści i tagi do nadpisywania komunikatów."
+      input:
+        notify_entities:
+          name: "📨 Encje notify"
+          default: []
+          selector:
+            entity:
+              domain: notify
+              multiple: true
+
+        actionable_enabled:
+          name: "🎛️ Włącz przyciski drzemka/odrzuć (niekrytyczne)"
+          default: true
+          selector:
+            boolean:
+
+        snooze_minutes:
+          name: "😴 Drzemka (minuty)"
+          default: 20
+          selector:
+            number:
+              min: 1
+              max: 240
+              step: 1
+              unit_of_measurement: "min"
+              mode: slider
+
+        snooze_button_text:
+          name: "🔘 Tekst przycisku Drzemka"
+          default: "Przypomnij później"
+          selector:
+            text:
+
+        dismiss_button_text:
+          name: "🔘 Tekst przycisku Odrzuć"
+          default: "OK"
+          selector:
+            text:
+
+        notify_precip_enabled:
+          name: "🌧️ Wysyłaj alert opadów"
+          default: true
+          selector:
+            boolean:
+
+        notify_away_enabled:
+          name: "🏝️ Wysyłaj alert all-away"
+          default: true
+          selector:
+            boolean:
+
+        notify_advisor_enabled:
+          name: "🧠 Wysyłaj rekomendacje doradcy"
+          default: true
+          selector:
+            boolean:
+
+        notify_summary_enabled:
+          name: "🌙 Wysyłaj raport nocny"
+          default: true
+          selector:
+            boolean:
+
+        cycle_notification_tag:
+          name: "🏷️ Tag powiadomień standardowych"
+          default: "window_guardian_main"
+          selector:
+            text:
+
+        critical_notification_tag:
+          name: "🏷️ Tag powiadomień krytycznych"
+          default: "window_guardian_critical"
+          selector:
+            text:
+
+        title_precip:
+          name: "📝 Tytuł: opady"
+          default: "🌧️ Uwaga: opady i otwarte okna"
+          selector:
+            text:
+
+        message_precip:
+          name: "📝 Treść: opady"
+          description: "Placeholdery: {open_windows}, {weather_state}."
+          default: "Wykryto ryzyko opadów ({weather_state}). Otwarte: {open_windows}."
+          selector:
+            text:
+              multiline: true
+
+        title_away:
+          name: "📝 Tytuł: all-away"
+          default: "🏝️ Wszyscy poza domem, okna otwarte"
+          selector:
+            text:
+
+        message_away:
+          name: "📝 Treść: all-away"
+          description: "Placeholder: {open_windows}."
+          default: "Dom jest pusty, a otwarte są: {open_windows}."
+          selector:
+            text:
+              multiline: true
+
+        title_advisor_open:
+          name: "📝 Tytuł: doradca otwórz"
+          default: "🟢 Dobra pora na wietrzenie"
+          selector:
+            text:
+
+        message_advisor_open:
+          name: "📝 Treść: doradca otwórz"
+          description: "Placeholdery: {indoor_temp}, {outdoor_temp}, {open_windows}."
+          default: "W domu {indoor_temp}°C, na zewnątrz {outdoor_temp}°C. Warto otworzyć okno."
+          selector:
+            text:
+              multiline: true
+
+        title_advisor_close:
+          name: "📝 Tytuł: doradca zamknij"
+          default: "🔴 Lepiej zamknąć okna"
+          selector:
+            text:
+
+        message_advisor_close:
+          name: "📝 Treść: doradca zamknij"
+          description: "Placeholdery: {indoor_temp}, {outdoor_temp}, {open_windows}."
+          default: "W domu {indoor_temp}°C, na zewnątrz {outdoor_temp}°C. Lepiej zamknąć: {open_windows}."
+          selector:
+            text:
+              multiline: true
+
+        title_summary:
+          name: "📝 Tytuł: raport nocny"
+          default: "🌙 Raport okien"
+          selector:
+            text:
+
+        message_summary_open:
+          name: "📝 Treść: raport (otwarte)"
+          description: "Placeholder: {open_windows}."
+          default: "Nocny raport: nadal otwarte są: {open_windows}."
+          selector:
+            text:
+              multiline: true
+
+        message_summary_closed:
+          name: "📝 Treść: raport (zamknięte)"
+          default: "Nocny raport: wszystkie monitorowane okna są zamknięte."
+          selector:
+            text:
+              multiline: true
+
+    # =========================================================================
+    # 🔕 SEKCJA 6: CISZA I WYJĄTKI
+    # =========================================================================
+    quiet_section:
+      name: "🔕 Cisza i wyjątki"
+      icon: mdi:bell-off
+      collapsed: true
+      description: "Wyciszanie przez encję/schedule z możliwością wyjątków dla typów alertów."
+      input:
+        quiet_enabled:
+          name: "🔕 Włącz mechanizm ciszy"
+          default: false
+          selector:
+            boolean:
+
+        quiet_entity:
+          name: "🧷 Encja ciszy (opcjonalna)"
+          default: ""
+          selector:
+            entity:
+              filter:
+                - domain: binary_sensor
+                - domain: input_boolean
+
+        quiet_schedule_entities:
+          name: "🗓️ Harmonogramy ciszy (opcjonalne)"
+          default: []
+          selector:
+            entity:
+              domain: schedule
+              multiple: true
+
+        bypass_quiet_precip:
+          name: "🚨 Opady ignorują ciszę"
+          default: true
+          selector:
+            boolean:
+
+        bypass_quiet_away:
+          name: "🏝️ All-away ignoruje ciszę"
+          default: false
+          selector:
+            boolean:
+
+        bypass_quiet_advisor:
+          name: "🧠 Doradca ignoruje ciszę"
+          default: false
+          selector:
+            boolean:
+
+        bypass_quiet_summary:
+          name: "🌙 Raport nocny ignoruje ciszę"
+          default: false
+          selector:
+            boolean:
+
+    # =========================================================================
+    # 🔊 SEKCJA 7: TTS
+    # =========================================================================
+    tts_section:
+      name: "🔊 TTS"
+      icon: mdi:text-to-speech
+      collapsed: true
+      description: "Opcjonalne komunikaty głosowe z osobnym harmonogramem aktywności."
+      input:
+        tts_enabled:
+          name: "🔊 Włącz TTS"
+          default: false
+          selector:
+            boolean:
+
+        tts_engine_entity:
+          name: "🗣️ Encja TTS"
+          default: ""
+          selector:
+            entity:
+              domain: tts
+
+        tts_media_player_entity:
+          name: "📢 Media player"
+          default: ""
+          selector:
+            entity:
+              domain: media_player
+
+        tts_schedule_entities:
+          name: "🗓️ Harmonogram TTS (opcjonalny)"
+          description: "Gdy pusty, TTS może działać zawsze."
+          default: []
+          selector:
+            entity:
+              domain: schedule
+              multiple: true
+
+        tts_for_precip:
+          name: "🌧️ TTS dla opadów"
+          default: true
+          selector:
+            boolean:
+
+        tts_for_away:
+          name: "🏝️ TTS dla all-away"
+          default: false
+          selector:
+            boolean:
+
+        tts_for_advisor:
+          name: "🧠 TTS dla doradcy"
+          default: false
+          selector:
+            boolean:
+
+        tts_for_summary:
+          name: "🌙 TTS dla raportu nocnego"
+          default: false
+          selector:
+            boolean:
+
+    # =========================================================================
+    # 🌙 SEKCJA 8: RAPORT NOCNY
+    # =========================================================================
+    summary_section:
+      name: "🌙 Raport nocny"
+      icon: mdi:weather-night
+      collapsed: true
+      description: "Jednorazowy raport o stanie okien o zadanej porze lub przy starcie harmonogramu."
+      input:
+        summary_enabled:
+          name: "🌙 Włącz raport nocny"
+          default: true
+          selector:
+            boolean:
+
+        summary_time:
+          name: "🕘 Godzina raportu"
+          default: "22:30:00"
+          selector:
+            time:
+
+        summary_schedule_entity:
+          name: "🗓️ Harmonogram raportu (opcjonalny)"
+          description: "Gdy przejdzie w stan on, wyśle raport."
+          default: ""
+          selector:
+            entity:
+              domain: schedule
+
+    # =========================================================================
+    # 🔧 SEKCJA 9: ZAAWANSOWANE
+    # =========================================================================
+    advanced_section:
+      name: "🔧 Zaawansowane"
+      icon: mdi:cog
+      collapsed: true
+      input:
+        enable_logging:
+          name: "📝 Włącz logbook debug"
+          default: false
+          selector:
+            boolean:
+
+        blocking_condition:
+          name: "🚫 Globalny warunek blokujący"
+          default: []
+          selector:
+            condition:
+
+mode: parallel
+max: 20
+max_exceeded: silent
+
+trigger_variables:
+  summary_schedule_entity_input: !input summary_schedule_entity
+
+triggers:
+  - trigger: state
+    entity_id: !input window_sensors
+    id: state_change
+    for: !input windows_reaction_time_open
+
+  - trigger: state
+    entity_id: !input window_sensors
+    id: state_change
+    for: !input windows_reaction_time_close
+
+  - trigger: state
+    entity_id: !input weather_entity
+    id: state_change
+
+  - trigger: state
+    entity_id: !input people_entities
+    id: state_change
+
+  - trigger: time_pattern
+    minutes: "/5"
+    id: heartbeat
+
+  - trigger: time
+    at: !input summary_time
+    id: nightly_summary
+
+  - trigger: template
+    value_template: >
+      {{ summary_schedule_entity_input not in ['', none] and is_state(summary_schedule_entity_input, 'on') }}
+    id: nightly_summary
+
+conditions: !input blocking_condition
+
+actions:
+  - variables:
+      v_enable_logging: !input enable_logging
+
+      v_window_sensors: !input window_sensors
+
+      v_weather_entity: !input weather_entity
+      v_precip_alert_enabled: !input precip_alert_enabled
+      v_alert_rain: !input alert_rain
+      v_alert_snow: !input alert_snow
+      v_precip_forecast_minutes: !input precip_forecast_minutes
+      v_night_mode_schedule: !input night_mode_schedule
+      v_night_mode_entity: !input night_mode_entity
+
+      v_away_alert_enabled: !input away_alert_enabled
+      v_people_entities: !input people_entities
+      v_away_override_entity: !input away_override_entity
+
+      v_advisor_enabled: !input advisor_enabled
+      v_advisor_check_interval_minutes: !input advisor_check_interval_minutes
+      v_indoor_temperature_sensor: !input indoor_temperature_sensor
+      v_indoor_temperature_sensors: !input indoor_temperature_sensors
+      v_outdoor_temperature_sensor: !input outdoor_temperature_sensor
+      v_open_when_cooler_delta: !input open_when_cooler_delta
+      v_avoid_when_hotter_delta: !input avoid_when_hotter_delta
+      v_allow_warming_when_indoor_below: !input allow_warming_when_indoor_below
+      v_use_humidity_guard: !input use_humidity_guard
+      v_indoor_humidity_sensor: !input indoor_humidity_sensor
+      v_outdoor_humidity_sensor: !input outdoor_humidity_sensor
+      v_humidity_outdoor_higher_by: !input humidity_outdoor_higher_by
+      v_use_co2_guard: !input use_co2_guard
+      v_indoor_co2_sensor: !input indoor_co2_sensor
+      v_co2_threshold: !input co2_threshold
+
+      v_notify_entities: !input notify_entities
+      v_actionable_enabled: !input actionable_enabled
+      v_snooze_minutes: !input snooze_minutes
+      v_snooze_button_text: !input snooze_button_text
+      v_dismiss_button_text: !input dismiss_button_text
+      v_notify_precip_enabled: !input notify_precip_enabled
+      v_notify_away_enabled: !input notify_away_enabled
+      v_notify_advisor_enabled: !input notify_advisor_enabled
+      v_notify_summary_enabled: !input notify_summary_enabled
+      v_summary_enabled: !input summary_enabled
+      v_cycle_notification_tag: !input cycle_notification_tag
+      v_critical_notification_tag: !input critical_notification_tag
+      v_title_precip: !input title_precip
+      v_message_precip: !input message_precip
+      v_title_away: !input title_away
+      v_message_away: !input message_away
+      v_title_advisor_open: !input title_advisor_open
+      v_message_advisor_open: !input message_advisor_open
+      v_title_advisor_close: !input title_advisor_close
+      v_message_advisor_close: !input message_advisor_close
+      v_title_summary: !input title_summary
+      v_message_summary_open: !input message_summary_open
+      v_message_summary_closed: !input message_summary_closed
+
+      v_quiet_enabled: !input quiet_enabled
+      v_quiet_entity: !input quiet_entity
+      v_quiet_schedule_entities: !input quiet_schedule_entities
+      v_bypass_quiet_precip: !input bypass_quiet_precip
+      v_bypass_quiet_away: !input bypass_quiet_away
+      v_bypass_quiet_advisor: !input bypass_quiet_advisor
+      v_bypass_quiet_summary: !input bypass_quiet_summary
+
+      v_tts_enabled: !input tts_enabled
+      v_tts_engine_entity: !input tts_engine_entity
+      v_tts_media_player_entity: !input tts_media_player_entity
+      v_tts_schedule_entities: !input tts_schedule_entities
+      v_tts_for_precip: !input tts_for_precip
+      v_tts_for_away: !input tts_for_away
+      v_tts_for_advisor: !input tts_for_advisor
+      v_tts_for_summary: !input tts_for_summary
+
+      open_windows_entities: >
+        {% set ns = namespace(lst=[]) %}
+        {% for e in expand(v_window_sensors) %}
+          {% if e.state in ['on', 'open', 'tilted'] %}
+            {% set ns.lst = ns.lst + [e.entity_id] %}
+          {% endif %}
+        {% endfor %}
+        {{ ns.lst }}
+      open_windows_count: "{{ open_windows_entities | length }}"
+      open_windows_names: >
+        {% set ns = namespace(lst=[]) %}
+        {% for e in expand(v_window_sensors) %}
+          {% if e.state in ['on', 'open', 'tilted'] %}
+            {% set ns.lst = ns.lst + [(e.name if e.name is not none else e.entity_id)] %}
+          {% endif %}
+        {% endfor %}
+        {{ ns.lst | join(', ') if (ns.lst | length) > 0 else 'brak' }}
+
+      someone_home: "{{ (v_people_entities | length > 0) and ((v_people_entities | select('is_state', 'home') | list | length) > 0) }}"
+      away_override_on: >
+        {% if v_away_override_entity in ['', none] %}
+          false
+        {% else %}
+          {{ states(v_away_override_entity) in ['on', 'true', 'home'] }}
+        {% endif %}
+      all_away: "{{ (v_people_entities | length > 0 and not someone_home) or away_override_on }}"
+
+      quiet_by_entity: >
+        {% if v_quiet_entity in ['', none] %}
+          false
+        {% else %}
+          {{ states(v_quiet_entity) in ['on', 'true', 'home'] }}
+        {% endif %}
+      quiet_by_schedule: >
+        {% set ns = namespace(active=false) %}
+        {% for sch in v_quiet_schedule_entities %}
+          {% if is_state(sch, 'on') %}
+            {% set ns.active = true %}
+          {% endif %}
+        {% endfor %}
+        {{ ns.active }}
+      quiet_active: "{{ v_quiet_enabled and (quiet_by_entity or quiet_by_schedule) }}"
+
+      allow_precip_notifications: "{{ (not quiet_active) or v_bypass_quiet_precip }}"
+      allow_away_notifications: "{{ (not quiet_active) or v_bypass_quiet_away }}"
+      allow_advisor_notifications: "{{ (not quiet_active) or v_bypass_quiet_advisor }}"
+      allow_summary_notifications: "{{ (not quiet_active) or v_bypass_quiet_summary }}"
+
+      tts_allowed: >
+        {% if v_tts_schedule_entities | length == 0 %}
+          true
+        {% else %}
+          {% set ns = namespace(active=false) %}
+          {% for sch in v_tts_schedule_entities %}
+            {% if is_state(sch, 'on') %}
+              {% set ns.active = true %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.active }}
+        {% endif %}
+
+      night_active: >
+        {% set by_schedule = (v_night_mode_schedule not in ['', none] and is_state(v_night_mode_schedule, 'on')) %}
+        {% set by_entity = (v_night_mode_entity not in ['', none] and states(v_night_mode_entity) in ['on', 'true', 'home']) %}
+        {% if v_night_mode_schedule in ['', none] and v_night_mode_entity in ['', none] %}
+          {{ is_state('sun.sun', 'below_horizon') }}
+        {% else %}
+          {{ by_schedule or by_entity }}
+        {% endif %}
+
+      weather_state: "{{ states(v_weather_entity) }}"
+      precip_now_rain: "{{ weather_state in ['rainy', 'pouring', 'lightning-rainy'] }}"
+      precip_now_snow: "{{ weather_state in ['snowy', 'snowy-rainy'] }}"
+
+      precip_soon_rain: >
+        {% if (v_precip_forecast_minutes | int(0)) <= 0 %}
+          false
+        {% else %}
+          {% set ns = namespace(hit=false) %}
+          {% set horizon = as_timestamp(now()) + (v_precip_forecast_minutes | int(0)) * 60 %}
+          {% for f in state_attr(v_weather_entity, 'forecast') or [] %}
+            {% set c = f.condition if f.condition is defined else '' %}
+            {% set ts = as_timestamp(f.datetime if f.datetime is defined else none, 0) %}
+            {% if ts > 0 and ts <= horizon and c in ['rainy', 'pouring', 'lightning-rainy'] %}
+              {% set ns.hit = true %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.hit }}
+        {% endif %}
+
+      precip_soon_snow: >
+        {% if (v_precip_forecast_minutes | int(0)) <= 0 %}
+          false
+        {% else %}
+          {% set ns = namespace(hit=false) %}
+          {% set horizon = as_timestamp(now()) + (v_precip_forecast_minutes | int(0)) * 60 %}
+          {% for f in state_attr(v_weather_entity, 'forecast') or [] %}
+            {% set c = f.condition if f.condition is defined else '' %}
+            {% set ts = as_timestamp(f.datetime if f.datetime is defined else none, 0) %}
+            {% if ts > 0 and ts <= horizon and c in ['snowy', 'snowy-rainy'] %}
+              {% set ns.hit = true %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.hit }}
+        {% endif %}
+
+      precip_detected: >
+        {{
+          (v_alert_rain and (precip_now_rain or precip_soon_rain))
+          or
+          (v_alert_snow and (precip_now_snow or precip_soon_snow))
+        }}
+
+      has_indoor_multi_temp: "{{ v_indoor_temperature_sensors | length > 0 }}"
+      indoor_temp: >
+        {% if has_indoor_multi_temp %}
+          {% set vals = expand(v_indoor_temperature_sensors) | map(attribute='state') | map('float', 0) | list %}
+          {{ (vals | sum / (vals | length if (vals | length) > 0 else 1)) | round(1) }}
+        {% elif v_indoor_temperature_sensor not in ['', none] %}
+          {{ states(v_indoor_temperature_sensor) | float(0) | round(1) }}
+        {% else %}
+          {{ 0 }}
+        {% endif %}
+      outdoor_temp: >
+        {% if v_outdoor_temperature_sensor not in ['', none] %}
+          {{ states(v_outdoor_temperature_sensor) | float(0) | round(1) }}
+        {% else %}
+          {{ 0 }}
+        {% endif %}
+      has_temp_for_advisor: >
+        {{
+          v_outdoor_temperature_sensor not in ['', none]
+          and
+          (has_indoor_multi_temp or v_indoor_temperature_sensor not in ['', none])
+        }}
+
+      indoor_humidity: >
+        {% if v_indoor_humidity_sensor not in ['', none] %}
+          {{ states(v_indoor_humidity_sensor) | float(0) }}
+        {% else %}
+          {{ 0 }}
+        {% endif %}
+      outdoor_humidity: >
+        {% if v_outdoor_humidity_sensor not in ['', none] %}
+          {{ states(v_outdoor_humidity_sensor) | float(0) }}
+        {% else %}
+          {{ 0 }}
+        {% endif %}
+      humidity_blocks_opening: >
+        {% if v_use_humidity_guard and v_indoor_humidity_sensor not in ['', none] and v_outdoor_humidity_sensor not in ['', none] %}
+          {{ (outdoor_humidity - indoor_humidity) >= (v_humidity_outdoor_higher_by | float(0)) }}
+        {% else %}
+          false
+        {% endif %}
+
+      co2_high: >
+        {% if v_use_co2_guard and v_indoor_co2_sensor not in ['', none] %}
+          {{ (states(v_indoor_co2_sensor) | float(0)) >= (v_co2_threshold | float(0)) }}
+        {% else %}
+          false
+        {% endif %}
+
+      delta_cool: "{{ (indoor_temp - outdoor_temp) | round(1) }}"
+      delta_hot: "{{ (outdoor_temp - indoor_temp) | round(1) }}"
+
+      advisor_recommend_open: >
+        {{
+          v_advisor_enabled
+          and has_temp_for_advisor
+          and (open_windows_count | int(0) == 0)
+          and not precip_detected
+          and not humidity_blocks_opening
+          and (
+            (delta_cool | float(0)) >= (v_open_when_cooler_delta | float(0))
+            or co2_high
+          )
+        }}
+
+      advisor_recommend_close: >
+        {{
+          v_advisor_enabled
+          and has_temp_for_advisor
+          and (open_windows_count | int(0) > 0)
+          and (
+            precip_detected
+            or humidity_blocks_opening
+            or (
+              (delta_hot | float(0)) >= (v_avoid_when_hotter_delta | float(0))
+              and (indoor_temp | float(0)) > (v_allow_warming_when_indoor_below | float(0))
+            )
+          )
+        }}
+
+      advisor_tick: "{{ (now().minute % (v_advisor_check_interval_minutes | int(1))) == 0 }}"
+
+      should_send_precip: "{{ v_precip_alert_enabled and v_notify_precip_enabled and allow_precip_notifications and night_active and (open_windows_count | int(0) > 0) and precip_detected }}"
+      should_send_away: "{{ v_away_alert_enabled and v_notify_away_enabled and allow_away_notifications and (open_windows_count | int(0) > 0) and all_away }}"
+      should_send_advisor_open: "{{ v_notify_advisor_enabled and allow_advisor_notifications and advisor_recommend_open and (trigger.id != 'heartbeat' or advisor_tick) }}"
+      should_send_advisor_close: "{{ v_notify_advisor_enabled and allow_advisor_notifications and advisor_recommend_close and (trigger.id != 'heartbeat' or advisor_tick) }}"
+
+      msg_precip: >
+        {% set t = v_message_precip %}
+        {% set t = t | replace('{open_windows}', open_windows_names) %}
+        {% set t = t | replace('{weather_state}', weather_state) %}
+        {{ t }}
+      msg_away: >
+        {% set t = v_message_away %}
+        {% set t = t | replace('{open_windows}', open_windows_names) %}
+        {{ t }}
+      msg_advisor_open: >
+        {% set t = v_message_advisor_open %}
+        {% set t = t | replace('{indoor_temp}', indoor_temp | string) %}
+        {% set t = t | replace('{outdoor_temp}', outdoor_temp | string) %}
+        {% set t = t | replace('{open_windows}', open_windows_names) %}
+        {{ t }}
+      msg_advisor_close: >
+        {% set t = v_message_advisor_close %}
+        {% set t = t | replace('{indoor_temp}', indoor_temp | string) %}
+        {% set t = t | replace('{outdoor_temp}', outdoor_temp | string) %}
+        {% set t = t | replace('{open_windows}', open_windows_names) %}
+        {{ t }}
+
+      action_snooze: "WINDOW_SNOOZE_{{ context.id }}"
+      action_dismiss: "WINDOW_DISMISS_{{ context.id }}"
+
+  - if: "{{ v_enable_logging }}"
+    then:
+      - action: logbook.log
+        data:
+          name: "🪟 Window Guardian"
+          message: "Trigger={{ trigger.id }} open={{ open_windows_count }} precip={{ precip_detected }} away={{ all_away }} quiet={{ quiet_active }}"
+
+  - choose:
+      - conditions:
+          - "{{ trigger.id in ['state_change', 'heartbeat'] }}"
+        sequence:
+          - choose:
+              - conditions:
+                  - "{{ should_send_precip }}"
+                sequence:
+                  - repeat:
+                      for_each: "{{ v_notify_entities }}"
+                      sequence:
+                        - action: notify.send_message
+                          continue_on_error: true
+                          target:
+                            entity_id: "{{ repeat.item }}"
+                          data:
+                            title: "{{ v_title_precip }}"
+                            message: "{{ msg_precip }}"
+                            data:
+                              tag: "{{ v_critical_notification_tag }}"
+                              group: window_guardian_critical
+                              priority: high
+                              ttl: 0
+                              importance: high
+                  - if:
+                      - "{{ v_tts_enabled and v_tts_for_precip and tts_allowed }}"
+                      - "{{ v_tts_engine_entity not in ['', none] }}"
+                      - "{{ v_tts_media_player_entity not in ['', none] }}"
+                    then:
+                      - action: tts.speak
+                        continue_on_error: true
+                        target:
+                          entity_id: "{{ v_tts_engine_entity }}"
+                        data:
+                          media_player_entity_id: "{{ v_tts_media_player_entity }}"
+                          message: "{{ msg_precip }}"
+
+              - conditions:
+                  - "{{ should_send_away }}"
+                sequence:
+                  - repeat:
+                      for_each: "{{ v_notify_entities }}"
+                      sequence:
+                        - action: notify.send_message
+                          continue_on_error: true
+                          target:
+                            entity_id: "{{ repeat.item }}"
+                          data:
+                            title: "{{ v_title_away }}"
+                            message: "{{ msg_away }}"
+                            data:
+                              tag: "{{ v_cycle_notification_tag }}"
+                              group: window_guardian_main
+                              actions: >
+                                {% if v_actionable_enabled %}
+                                  [
+                                    {"action": "{{ action_snooze }}", "title": "{{ v_snooze_button_text }}"},
+                                    {"action": "{{ action_dismiss }}", "title": "{{ v_dismiss_button_text }}"}
+                                  ]
+                                {% else %}
+                                  []
+                                {% endif %}
+                  - if:
+                      - "{{ v_actionable_enabled }}"
+                    then:
+                      - wait_for_trigger:
+                          - trigger: event
+                            event_type: mobile_app_notification_action
+                        timeout:
+                          minutes: "{{ v_snooze_minutes }}"
+                        continue_on_timeout: true
+                      - choose:
+                          - conditions:
+                              - "{{ wait.trigger != none and wait.trigger.event.data.action == action_snooze }}"
+                            sequence:
+                              - delay:
+                                  minutes: "{{ v_snooze_minutes }}"
+                              - repeat:
+                                  for_each: "{{ v_notify_entities }}"
+                                  sequence:
+                                    - action: notify.send_message
+                                      continue_on_error: true
+                                      target:
+                                        entity_id: "{{ repeat.item }}"
+                                      data:
+                                        title: "{{ v_title_away }}"
+                                        message: "{{ msg_away }}"
+                                        data:
+                                          tag: "{{ v_cycle_notification_tag }}"
+                                          group: window_guardian_main
+                  - if:
+                      - "{{ v_tts_enabled and v_tts_for_away and tts_allowed }}"
+                      - "{{ v_tts_engine_entity not in ['', none] }}"
+                      - "{{ v_tts_media_player_entity not in ['', none] }}"
+                    then:
+                      - action: tts.speak
+                        continue_on_error: true
+                        target:
+                          entity_id: "{{ v_tts_engine_entity }}"
+                        data:
+                          media_player_entity_id: "{{ v_tts_media_player_entity }}"
+                          message: "{{ msg_away }}"
+
+              - conditions:
+                  - "{{ should_send_advisor_close }}"
+                sequence:
+                  - repeat:
+                      for_each: "{{ v_notify_entities }}"
+                      sequence:
+                        - action: notify.send_message
+                          continue_on_error: true
+                          target:
+                            entity_id: "{{ repeat.item }}"
+                          data:
+                            title: "{{ v_title_advisor_close }}"
+                            message: "{{ msg_advisor_close }}"
+                            data:
+                              tag: "{{ v_cycle_notification_tag }}"
+                              group: window_guardian_main
+                              actions: >
+                                {% if v_actionable_enabled %}
+                                  [
+                                    {"action": "{{ action_snooze }}", "title": "{{ v_snooze_button_text }}"},
+                                    {"action": "{{ action_dismiss }}", "title": "{{ v_dismiss_button_text }}"}
+                                  ]
+                                {% else %}
+                                  []
+                                {% endif %}
+                  - if:
+                      - "{{ v_actionable_enabled }}"
+                    then:
+                      - wait_for_trigger:
+                          - trigger: event
+                            event_type: mobile_app_notification_action
+                        timeout:
+                          minutes: "{{ v_snooze_minutes }}"
+                        continue_on_timeout: true
+                      - choose:
+                          - conditions:
+                              - "{{ wait.trigger != none and wait.trigger.event.data.action == action_snooze }}"
+                            sequence:
+                              - delay:
+                                  minutes: "{{ v_snooze_minutes }}"
+                              - repeat:
+                                  for_each: "{{ v_notify_entities }}"
+                                  sequence:
+                                    - action: notify.send_message
+                                      continue_on_error: true
+                                      target:
+                                        entity_id: "{{ repeat.item }}"
+                                      data:
+                                        title: "{{ v_title_advisor_close }}"
+                                        message: "{{ msg_advisor_close }}"
+                                        data:
+                                          tag: "{{ v_cycle_notification_tag }}"
+                                          group: window_guardian_main
+                  - if:
+                      - "{{ v_tts_enabled and v_tts_for_advisor and tts_allowed }}"
+                      - "{{ v_tts_engine_entity not in ['', none] }}"
+                      - "{{ v_tts_media_player_entity not in ['', none] }}"
+                    then:
+                      - action: tts.speak
+                        continue_on_error: true
+                        target:
+                          entity_id: "{{ v_tts_engine_entity }}"
+                        data:
+                          media_player_entity_id: "{{ v_tts_media_player_entity }}"
+                          message: "{{ msg_advisor_close }}"
+
+              - conditions:
+                  - "{{ should_send_advisor_open }}"
+                sequence:
+                  - repeat:
+                      for_each: "{{ v_notify_entities }}"
+                      sequence:
+                        - action: notify.send_message
+                          continue_on_error: true
+                          target:
+                            entity_id: "{{ repeat.item }}"
+                          data:
+                            title: "{{ v_title_advisor_open }}"
+                            message: "{{ msg_advisor_open }}"
+                            data:
+                              tag: "{{ v_cycle_notification_tag }}"
+                              group: window_guardian_main
+                              actions: >
+                                {% if v_actionable_enabled %}
+                                  [
+                                    {"action": "{{ action_snooze }}", "title": "{{ v_snooze_button_text }}"},
+                                    {"action": "{{ action_dismiss }}", "title": "{{ v_dismiss_button_text }}"}
+                                  ]
+                                {% else %}
+                                  []
+                                {% endif %}
+                  - if:
+                      - "{{ v_actionable_enabled }}"
+                    then:
+                      - wait_for_trigger:
+                          - trigger: event
+                            event_type: mobile_app_notification_action
+                        timeout:
+                          minutes: "{{ v_snooze_minutes }}"
+                        continue_on_timeout: true
+                      - choose:
+                          - conditions:
+                              - "{{ wait.trigger != none and wait.trigger.event.data.action == action_snooze }}"
+                            sequence:
+                              - delay:
+                                  minutes: "{{ v_snooze_minutes }}"
+                              - repeat:
+                                  for_each: "{{ v_notify_entities }}"
+                                  sequence:
+                                    - action: notify.send_message
+                                      continue_on_error: true
+                                      target:
+                                        entity_id: "{{ repeat.item }}"
+                                      data:
+                                        title: "{{ v_title_advisor_open }}"
+                                        message: "{{ msg_advisor_open }}"
+                                        data:
+                                          tag: "{{ v_cycle_notification_tag }}"
+                                          group: window_guardian_main
+                  - if:
+                      - "{{ v_tts_enabled and v_tts_for_advisor and tts_allowed }}"
+                      - "{{ v_tts_engine_entity not in ['', none] }}"
+                      - "{{ v_tts_media_player_entity not in ['', none] }}"
+                    then:
+                      - action: tts.speak
+                        continue_on_error: true
+                        target:
+                          entity_id: "{{ v_tts_engine_entity }}"
+                        data:
+                          media_player_entity_id: "{{ v_tts_media_player_entity }}"
+                          message: "{{ msg_advisor_open }}"
+
+      - conditions:
+          - "{{ trigger.id == 'nightly_summary' }}"
+          - "{{ v_summary_enabled and v_notify_summary_enabled and allow_summary_notifications }}"
+        sequence:
+          - variables:
+              summary_message: >
+                {% if (open_windows_count | int(0)) > 0 %}
+                  {% set t = v_message_summary_open %}
+                  {{ t | replace('{open_windows}', open_windows_names) }}
+                {% else %}
+                  {{ v_message_summary_closed }}
+                {% endif %}
+          - repeat:
+              for_each: "{{ v_notify_entities }}"
+              sequence:
+                - action: notify.send_message
+                  continue_on_error: true
+                  target:
+                    entity_id: "{{ repeat.item }}"
+                  data:
+                    title: "{{ v_title_summary }}"
+                    message: "{{ summary_message }}"
+                    data:
+                      tag: "{{ v_cycle_notification_tag }}"
+                      group: window_guardian_main
+          - if:
+              - "{{ v_tts_enabled and v_tts_for_summary and tts_allowed }}"
+              - "{{ v_tts_engine_entity not in ['', none] }}"
+              - "{{ v_tts_media_player_entity not in ['', none] }}"
+            then:
+              - action: tts.speak
+                continue_on_error: true
+                target:
+                  entity_id: "{{ v_tts_engine_entity }}"
+                data:
+                  media_player_entity_id: "{{ v_tts_media_player_entity }}"
+                  message: "{{ summary_message }}"
+blueprint:
+  name: "🪟 Smart Window Guardian — Okna, pogoda i rekomendacje"
+  description: |
+    ## 🪟 Inteligentny strażnik okien
+
+    Blueprint monitoruje okna i wysyła rekomendacje/powiadomienia, gdy:
+    - w nocy jest ryzyko opadów i okna są otwarte,
+    - wszyscy opuścili dom i okna zostały otwarte,
+    - warunki sugerują, że warto otworzyć / nie warto otwierać okien,
+    - o zadanej porze ma zostać wysłany nocny raport otwartych okien.
+
+    ## ⚡ Funkcje
+    - 📨 Powiadomienia na wybrane encje `notify` z nadpisywaniem przez `tag`
+    - 🌧️ Alert opadów (stan bieżący i prognoza z `weather.*`)
+    - 🏝️ Alert "wszyscy poza domem + otwarte okno"
+    - 🧠 Doradca wietrzenia (temperatura/wilgotność/CO2)
+    - 🌙 Konfigurowalna cisza (schedule i/lub encja) z wyjątkami
+    - 🔊 Opcjonalny TTS z własnym harmonogramem
+    - 📋 Nocny raport otwartych okien
+
+  domain: automation
+  author: Szwajowy
+  source_url: https://github.com/Szwajowy/homeassistant/blob/master/blueprints/automation/szwajowy/window_weather_guardian.yaml
+  homeassistant:
+    min_version: "2024.10.0"
+
+  input:
+    # =========================================================================
+    # 🪟 SEKCJA 1: OKNA
+    # =========================================================================
+    windows_section:
+      name: "🪟 Okna"
+      icon: mdi:window-open-variant
+      description: "Wybierz czujniki otwarcia okien."
+      input:
+        window_sensors:
+          name: "📍 Czujniki okien"
+          selector:
+            entity:
+              domain: binary_sensor
+              multiple: true
+
+        window_open_debounce_seconds:
+          name: "⏱️ Debounce otwarcia"
+          description: "Ile sekund okno ma być otwarte, by uznać zdarzenie."
+          default: 30
+          selector:
+            number:
+              min: 0
+              max: 600
+              step: 1
+              unit_of_measurement: "s"
+              mode: slider
+
+    # =========================================================================
+    # 🌦️ SEKCJA 2: POGODA
+    # =========================================================================
+    weather_section:
+      name: "🌦️ Pogoda i opady"
+      icon: mdi:weather-rainy
+      collapsed: true
+      input:
+        weather_entity:
+          name: "🌤️ Encja weather"
+          description: "Np. weather.dom"
+          default: ""
+          selector:
+            entity:
+              domain: weather
+
+        rain_alert_enabled:
+          name: "🌧️ Włącz alert deszczu"
+          default: true
+          selector:
+            boolean:
+
+        snow_alert_enabled:
+          name: "❄️ Włącz alert śniegu"
+          default: true
+          selector:
+            boolean:
+
+        forecast_horizon_minutes:
+          name: "⏳ Horyzont prognozy opadów"
+          description: "Ile minut do przodu sprawdzać forecast." 
+          default: 120
+          selector:
+            number:
+              min: 0
+              max: 360
+              step: 5
+              unit_of_measurement: "min"
+              mode: slider
+
+        precip_night_only:
+          name: "🌙 Alert opadów tylko w nocy"
+          default: true
+          selector:
+            boolean:
+
+        night_schedule_entities:
+          name: "🗓️ Harmonogram nocy (opcjonalny)"
+          default: []
+          selector:
+            entity:
+              domain: schedule
+              multiple: true
+
+        night_override_entity:
+          name: "🧷 Encja wymuszająca noc (opcjonalna)"
+          default: ""
+          selector:
+            entity:
+              filter:
+                - domain: binary_sensor
+                - domain: input_boolean
+
+    # =========================================================================
+    # 👥 SEKCJA 3: OBECNOŚĆ
+    # =========================================================================
+    presence_section:
+      name: "👥 Obecność"
+      icon: mdi:account-group
+      collapsed: true
+      input:
+        away_alert_enabled:
+          name: "🏝️ Włącz alert: wszyscy poza domem + otwarte okno"
+          default: true
+          selector:
+            boolean:
+
+        people_entities:
+          name: "👤 Osoby do monitorowania"
+          default: []
+          selector:
+            entity:
+              domain: person
+              multiple: true
+
+        away_override_entity:
+          name: "🧷 Dodatkowa encja aktywująca tryb poza domem (opcjonalna)"
+          default: ""
+          selector:
+            entity:
+              filter:
+                - domain: binary_sensor
+                - domain: input_boolean
+
+    # =========================================================================
+    # 🧠 SEKCJA 4: DORADCA WIETRZENIA
+    # =========================================================================
+    advisor_section:
+      name: "🧠 Doradca wietrzenia"
+      icon: mdi:head-lightbulb
+      collapsed: true
+      input:
+        advisor_enabled:
+          name: "🧠 Włącz doradcę"
+          default: true
+          selector:
+            boolean:
+
+        indoor_temperature_sensor:
+          name: "🌡️ Temperatura wewnątrz (opcjonalna)"
+          default: ""
+          selector:
+            entity:
+              domain: sensor
+
+        outdoor_temperature_sensor:
+          name: "🌡️ Temperatura na zewnątrz (opcjonalna)"
+          default: ""
+          selector:
+            entity:
+              domain: sensor
+
+        indoor_humidity_sensor:
+          name: "💧 Wilgotność wewnątrz (opcjonalna)"
+          default: ""
+          selector:
+            entity:
+              domain: sensor
+
+        outdoor_humidity_sensor:
+          name: "💧 Wilgotność na zewnątrz (opcjonalna)"
+          default: ""
+          selector:
+            entity:
+              domain: sensor
+
+        co2_sensor:
+          name: "🫁 Sensor CO2 (opcjonalny)"
+          default: ""
+          selector:
+            entity:
+              domain: sensor
+
+        co2_high_ppm:
+          name: "🫁 Próg wysokiego CO2"
+          default: 1000
+          selector:
+            number:
+              min: 400
+              max: 3000
+              step: 50
+              unit_of_measurement: "ppm"
+              mode: slider
+
+        min_temp_delta_open:
+          name: "📉 Delta temp. dla rekomendacji otwarcia"
+          description: "Gdy (wewnątrz - zewnątrz) >= delta, doradca może sugerować otwarcie."
+          default: 1.5
+          selector:
+            number:
+              min: 0
+              max: 10
+              step: 0.1
+              unit_of_measurement: "°C"
+              mode: slider
+
+        max_temp_delta_avoid:
+          name: "📈 Delta temp. dla rekomendacji NIE otwieraj"
+          description: "Gdy (zewnątrz - wewnątrz) >= delta i okna są otwarte, doradca sugeruje zamknięcie."
+          default: 1.5
+          selector:
+            number:
+              min: 0
+              max: 10
+              step: 0.1
+              unit_of_measurement: "°C"
+              mode: slider
+
+        min_humidity_delta_open:
+          name: "💧 Delta wilgotności dla rekomendacji otwarcia"
+          description: "Gdy (wilg. wewnątrz - wilg. zewnątrz) >= delta, doradca może sugerować otwarcie."
+          default: 8
+          selector:
+            number:
+              min: 0
+              max: 40
+              step: 1
+              unit_of_measurement: "%"
+              mode: slider
+
+        allow_warm_if_indoor_cold:
+          name: "🧣 Pozwól dogrzewać gdy w domu zimno"
+          default: true
+          selector:
+            boolean:
+
+        indoor_cold_threshold:
+          name: "🧣 Próg zimna wewnątrz"
+          default: 19
+          selector:
+            number:
+              min: 10
+              max: 24
+              step: 0.5
+              unit_of_measurement: "°C"
+              mode: slider
+
+        advisor_stability_minutes:
+          name: "🕒 Stabilność warunku doradcy"
+          default: 10
+          selector:
+            number:
+              min: 0
+              max: 180
+              step: 1
+              unit_of_measurement: "min"
+              mode: slider
+
+    # =========================================================================
+    # 🔔 SEKCJA 5: POWIADOMIENIA
+    # =========================================================================
+    notifications_section:
+      name: "🔔 Powiadomienia"
+      icon: mdi:bell-ring
+      input:
+        notify_entities:
+          name: "📨 Encje notify"
+          default: []
+          selector:
+            entity:
+              domain: notify
+              multiple: true
+
+        notify_precip_enabled:
+          name: "🌧️ Powiadomienia opadów"
+          default: true
+          selector:
+            boolean:
+
+        notify_away_enabled:
+          name: "🏝️ Powiadomienia poza domem"
+          default: true
+          selector:
+            boolean:
+
+        notify_advisor_enabled:
+          name: "🧠 Powiadomienia doradcy"
+          default: true
+          selector:
+            boolean:
+
+        notify_night_summary_enabled:
+          name: "📋 Nocny raport"
+          default: true
+          selector:
+            boolean:
+
+        precip_title:
+          name: "📝 Tytuł alertu opadów"
+          default: "🌧️ Uwaga: opady i otwarte okna"
+          selector:
+            text:
+
+        precip_message:
+          name: "📝 Treść alertu opadów"
+          description: "Placeholdery: {windows}, {count}."
+          default: "Wykryto ryzyko opadów. Otwarte okna ({count}): {windows}."
+          selector:
+            text:
+              multiline: true
+
+        away_title:
+          name: "📝 Tytuł alertu poza domem"
+          default: "🏝️ Wszyscy poza domem, okna otwarte"
+          selector:
+            text:
+
+        away_message:
+          name: "📝 Treść alertu poza domem"
+          description: "Placeholdery: {windows}, {count}."
+          default: "W domu nikogo nie ma, a otwarte okna ({count}): {windows}."
+          selector:
+            text:
+              multiline: true
+
+        advisor_open_title:
+          name: "📝 Tytuł rekomendacji otwarcia"
+          default: "🪟 Warto przewietrzyć"
+          selector:
+            text:
+
+        advisor_open_message:
+          name: "📝 Treść rekomendacji otwarcia"
+          description: "Placeholdery: {delta_temp}, {delta_humidity}, {co2}."
+          default: "Warunki sprzyjają wietrzeniu. ΔT: {delta_temp}°C, ΔRH: {delta_humidity}%, CO2: {co2} ppm."
+          selector:
+            text:
+              multiline: true
+
+        advisor_avoid_title:
+          name: "📝 Tytuł rekomendacji zamknięcia"
+          default: "🔥 Lepiej zamknąć okna"
+          selector:
+            text:
+
+        advisor_avoid_message:
+          name: "📝 Treść rekomendacji zamknięcia"
+          description: "Placeholdery: {delta_temp}, {windows}, {count}."
+          default: "Na zewnątrz jest cieplej (ΔT: {delta_temp}°C). Otwarte okna ({count}): {windows}."
+          selector:
+            text:
+              multiline: true
+
+        night_summary_time:
+          name: "🕘 Godzina nocnego raportu"
+          default: "22:30:00"
+          selector:
+            time:
+
+        night_summary_title:
+          name: "📝 Tytuł nocnego raportu"
+          default: "🌙 Nocny status okien"
+          selector:
+            text:
+
+        night_summary_message:
+          name: "📝 Treść nocnego raportu"
+          description: "Placeholdery: {windows}, {count}."
+          default: "Aktualnie otwarte okna ({count}): {windows}."
+          selector:
+            text:
+              multiline: true
+
+    # =========================================================================
+    # 🔕 SEKCJA 6: CISZA
+    # =========================================================================
+    quiet_section:
+      name: "🔕 Cisza i wyjątki"
+      icon: mdi:bell-off
+      collapsed: true
+      input:
+        quiet_enabled:
+          name: "🔕 Włącz tryb ciszy"
+          default: false
+          selector:
+            boolean:
+
+        quiet_entity:
+          name: "🧷 Encja aktywująca ciszę (opcjonalna)"
+          default: ""
+          selector:
+            entity:
+              filter:
+                - domain: binary_sensor
+                - domain: input_boolean
+
+        quiet_schedule_entities:
+          name: "🗓️ Harmonogramy ciszy (opcjonalne)"
+          default: []
+          selector:
+            entity:
+              domain: schedule
+              multiple: true
+
+        allow_precip_in_quiet:
+          name: "🌧️ Alert opadów może ignorować ciszę"
+          default: true
+          selector:
+            boolean:
+
+        allow_away_in_quiet:
+          name: "🏝️ Alert poza domem może ignorować ciszę"
+          default: true
+          selector:
+            boolean:
+
+        allow_advisor_in_quiet:
+          name: "🧠 Doradca może ignorować ciszę"
+          default: false
+          selector:
+            boolean:
+
+        allow_summary_in_quiet:
+          name: "📋 Nocny raport może ignorować ciszę"
+          default: false
+          selector:
+            boolean:
+
+    # =========================================================================
+    # 🔊 SEKCJA 7: TTS
+    # =========================================================================
+    tts_section:
+      name: "🔊 TTS"
+      icon: mdi:text-to-speech
+      collapsed: true
+      input:
+        tts_enabled:
+          name: "🔊 Włącz TTS"
+          default: false
+          selector:
+            boolean:
+
+        tts_engine_entity:
+          name: "🗣️ Encja TTS"
+          default: ""
+          selector:
+            entity:
+              domain: tts
+
+        tts_media_player_entity:
+          name: "📢 Media player"
+          default: ""
+          selector:
+            entity:
+              domain: media_player
+
+        tts_schedule_entities:
+          name: "🗓️ Harmonogram TTS (opcjonalny)"
+          description: "Jeśli puste, TTS działa zawsze."
+          default: []
+          selector:
+            entity:
+              domain: schedule
+              multiple: true
+
+        tts_precip_enabled:
+          name: "🌧️ TTS dla opadów"
+          default: true
+          selector:
+            boolean:
+
+        tts_away_enabled:
+          name: "🏝️ TTS dla poza domem"
+          default: false
+          selector:
+            boolean:
+
+        tts_advisor_enabled:
+          name: "🧠 TTS dla doradcy"
+          default: false
+          selector:
+            boolean:
+
+        tts_summary_enabled:
+          name: "📋 TTS dla nocnego raportu"
+          default: false
+          selector:
+            boolean:
+
+    # =========================================================================
+    # 🔧 SEKCJA 8: ZAAWANSOWANE
+    # =========================================================================
+    advanced_section:
+      name: "🔧 Zaawansowane"
+      icon: mdi:cog
+      collapsed: true
+      input:
+        enable_logging:
+          name: "📝 Włącz logbook"
+          default: false
+          selector:
+            boolean:
+
+trigger_variables:
+  v_window_sensors_input: !input window_sensors
+  v_weather_entity_input: !input weather_entity
+  v_night_schedule_entities_input: !input night_schedule_entities
+  v_night_override_entity_input: !input night_override_entity
+
+triggers:
+  - trigger: template
+    value_template: "{{ expand(v_window_sensors_input) | selectattr('state', 'in', ['on', 'open', 'tilted']) | list | length > 0 }}"
+    for:
+      seconds: !input window_open_debounce_seconds
+    id: windows_open
+
+  - trigger: template
+    value_template: "{{ expand(v_window_sensors_input) | selectattr('state', 'in', ['on', 'open', 'tilted']) | list | length == 0 }}"
+    id: windows_closed
+
+  - trigger: template
+    value_template: >
+      {% set someone_home = (people_entities_input | length > 0) and ((people_entities_input | select('is_state', 'home') | list | length) > 0) %}
+      {% set away_override_on = away_override_entity_input not in ['', none] and states(away_override_entity_input) in ['on', 'true', 'home'] %}
+      {% set away_active = away_alert_enabled_input and (((people_entities_input | length > 0) and not someone_home) or away_override_on) %}
+      {% set open_count = expand(window_sensors_input) | selectattr('state', 'in', ['on', 'open', 'tilted']) | list | length %}
+      {{ away_active and open_count > 0 }}
+    id: away_open
+    variables:
+      people_entities_input: !input people_entities
+      away_override_entity_input: !input away_override_entity
+      away_alert_enabled_input: !input away_alert_enabled
+      window_sensors_input: !input window_sensors
+
+  - trigger: template
+    value_template: >
+      {% set open_count = expand(window_sensors_input) | selectattr('state', 'in', ['on', 'open', 'tilted']) | list | length %}
+      {% set night_override = night_override_entity_input not in ['', none] and states(night_override_entity_input) in ['on', 'true', 'home'] %}
+      {% set night_schedule_on = (night_schedule_entities_input | select('is_state', 'on') | list | length) > 0 %}
+      {% set night_fallback = now().hour >= 22 or now().hour < 6 %}
+      {% set night_active = night_override or night_schedule_on or ((night_schedule_entities_input | length == 0 and night_override_entity_input in ['', none]) and night_fallback) %}
+      {% set weather_ok = weather_entity_input not in ['', none] %}
+      {% set now_condition = states(weather_entity_input) if weather_ok else '' %}
+      {% set rain_now = rain_enabled_input and now_condition in ['rainy', 'pouring', 'lightning-rainy', 'hail'] %}
+      {% set snow_now = snow_enabled_input and now_condition in ['snowy', 'snowy-rainy'] %}
+      {% set ns = namespace(forecast_precip=false) %}
+      {% set forecast = state_attr(weather_entity_input, 'forecast') if weather_ok else [] %}
+      {% if forecast is iterable %}
+        {% for item in forecast %}
+          {% set cond = item.condition | default('') %}
+          {% set fdt = item.datetime | default(item.forecast_time | default(item.time | default(''))) %}
+          {% set delta = ((as_timestamp(fdt, 0) - as_timestamp(now())) / 60) | int(99999) %}
+          {% if delta >= 0 and delta <= horizon_input | int(0) %}
+            {% if rain_enabled_input and cond in ['rainy', 'pouring', 'lightning-rainy', 'hail'] %}
+              {% set ns.forecast_precip = true %}
+            {% endif %}
+            {% if snow_enabled_input and cond in ['snowy', 'snowy-rainy'] %}
+              {% set ns.forecast_precip = true %}
+            {% endif %}
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+      {% set precip = rain_now or snow_now or ns.forecast_precip %}
+      {{ open_count > 0 and weather_ok and precip and ((not precip_night_only_input) or night_active) }}
+    id: precip_risk
+    variables:
+      window_sensors_input: !input window_sensors
+      weather_entity_input: !input weather_entity
+      rain_enabled_input: !input rain_alert_enabled
+      snow_enabled_input: !input snow_alert_enabled
+      horizon_input: !input forecast_horizon_minutes
+      precip_night_only_input: !input precip_night_only
+      night_schedule_entities_input: !input night_schedule_entities
+      night_override_entity_input: !input night_override_entity
+
+  - trigger: template
+    value_template: >
+      {% set open_count = expand(window_sensors_input) | selectattr('state', 'in', ['on', 'open', 'tilted']) | list | length %}
+      {% set indoor_t = states(indoor_temperature_sensor_input) | float(9999) %}
+      {% set outdoor_t = states(outdoor_temperature_sensor_input) | float(9999) %}
+      {% set indoor_h = states(indoor_humidity_sensor_input) | float(9999) %}
+      {% set outdoor_h = states(outdoor_humidity_sensor_input) | float(9999) %}
+      {% set co2 = states(co2_sensor_input) | float(0) %}
+      {% set has_temp = indoor_temperature_sensor_input not in ['', none] and outdoor_temperature_sensor_input not in ['', none] and indoor_t != 9999 and outdoor_t != 9999 %}
+      {% set has_hum = indoor_humidity_sensor_input not in ['', none] and outdoor_humidity_sensor_input not in ['', none] and indoor_h != 9999 and outdoor_h != 9999 %}
+      {% set temp_open = has_temp and (indoor_t - outdoor_t) >= min_temp_delta_open_input | float(0) %}
+      {% set hum_open = has_hum and (indoor_h - outdoor_h) >= min_humidity_delta_open_input | float(0) %}
+      {% set co2_open = co2_sensor_input not in ['', none] and co2 >= co2_high_ppm_input | float(0) %}
+      {{ advisor_enabled_input and open_count == 0 and (temp_open or hum_open or co2_open) }}
+    for:
+      minutes: !input advisor_stability_minutes
+    id: advisor_open
+    variables:
+      advisor_enabled_input: !input advisor_enabled
+      window_sensors_input: !input window_sensors
+      indoor_temperature_sensor_input: !input indoor_temperature_sensor
+      outdoor_temperature_sensor_input: !input outdoor_temperature_sensor
+      indoor_humidity_sensor_input: !input indoor_humidity_sensor
+      outdoor_humidity_sensor_input: !input outdoor_humidity_sensor
+      co2_sensor_input: !input co2_sensor
+      co2_high_ppm_input: !input co2_high_ppm
+      min_temp_delta_open_input: !input min_temp_delta_open
+      min_humidity_delta_open_input: !input min_humidity_delta_open
+
+  - trigger: template
+    value_template: >
+      {% set open_count = expand(window_sensors_input) | selectattr('state', 'in', ['on', 'open', 'tilted']) | list | length %}
+      {% set indoor_t = states(indoor_temperature_sensor_input) | float(9999) %}
+      {% set outdoor_t = states(outdoor_temperature_sensor_input) | float(9999) %}
+      {% set has_temp = indoor_temperature_sensor_input not in ['', none] and outdoor_temperature_sensor_input not in ['', none] and indoor_t != 9999 and outdoor_t != 9999 %}
+      {% set allow_heat = allow_warm_if_indoor_cold_input and has_temp and indoor_t <= indoor_cold_threshold_input | float(0) %}
+      {% set avoid = has_temp and (outdoor_t - indoor_t) >= max_temp_delta_avoid_input | float(0) %}
+      {{ advisor_enabled_input and open_count > 0 and avoid and not allow_heat }}
+    for:
+      minutes: !input advisor_stability_minutes
+    id: advisor_avoid
+    variables:
+      advisor_enabled_input: !input advisor_enabled
+      window_sensors_input: !input window_sensors
+      indoor_temperature_sensor_input: !input indoor_temperature_sensor
+      outdoor_temperature_sensor_input: !input outdoor_temperature_sensor
+      max_temp_delta_avoid_input: !input max_temp_delta_avoid
+      allow_warm_if_indoor_cold_input: !input allow_warm_if_indoor_cold
+      indoor_cold_threshold_input: !input indoor_cold_threshold
+
+  - trigger: time
+    at: !input night_summary_time
+    id: night_summary
+
+conditions: []
+
+actions:
+  - variables:
+      v_enable_logging: !input enable_logging
+
+      v_window_sensors: !input window_sensors
+      v_weather_entity: !input weather_entity
+      v_notify_entities: !input notify_entities
+
+      v_notify_precip_enabled: !input notify_precip_enabled
+      v_notify_away_enabled: !input notify_away_enabled
+      v_notify_advisor_enabled: !input notify_advisor_enabled
+      v_notify_night_summary_enabled: !input notify_night_summary_enabled
+
+      v_quiet_enabled: !input quiet_enabled
+      v_quiet_entity: !input quiet_entity
+      v_quiet_schedule_entities: !input quiet_schedule_entities
+      v_allow_precip_in_quiet: !input allow_precip_in_quiet
+      v_allow_away_in_quiet: !input allow_away_in_quiet
+      v_allow_advisor_in_quiet: !input allow_advisor_in_quiet
+      v_allow_summary_in_quiet: !input allow_summary_in_quiet
+
+      v_tts_enabled: !input tts_enabled
+      v_tts_engine_entity: !input tts_engine_entity
+      v_tts_media_player_entity: !input tts_media_player_entity
+      v_tts_schedule_entities: !input tts_schedule_entities
+      v_tts_precip_enabled: !input tts_precip_enabled
+      v_tts_away_enabled: !input tts_away_enabled
+      v_tts_advisor_enabled: !input tts_advisor_enabled
+      v_tts_summary_enabled: !input tts_summary_enabled
+
+      v_precip_title: !input precip_title
+      v_precip_message: !input precip_message
+      v_away_title: !input away_title
+      v_away_message: !input away_message
+      v_advisor_open_title: !input advisor_open_title
+      v_advisor_open_message: !input advisor_open_message
+      v_advisor_avoid_title: !input advisor_avoid_title
+      v_advisor_avoid_message: !input advisor_avoid_message
+      v_night_summary_title: !input night_summary_title
+      v_night_summary_message: !input night_summary_message
+
+      v_indoor_temperature_sensor: !input indoor_temperature_sensor
+      v_outdoor_temperature_sensor: !input outdoor_temperature_sensor
+      v_indoor_humidity_sensor: !input indoor_humidity_sensor
+      v_outdoor_humidity_sensor: !input outdoor_humidity_sensor
+      v_co2_sensor: !input co2_sensor
+
+      open_windows_entities: >
+        {% set ns = namespace(lst=[]) %}
+        {% for e in expand(v_window_sensors) %}
+          {% if e.state in ['on', 'open', 'tilted'] %}
+            {% set ns.lst = ns.lst + [e.entity_id] %}
+          {% endif %}
+        {% endfor %}
+        {{ ns.lst }}
+      open_windows_names: >
+        {% set ns = namespace(lst=[]) %}
+        {% for e in expand(v_window_sensors) %}
+          {% if e.state in ['on', 'open', 'tilted'] %}
+            {% set ns.lst = ns.lst + [e.name if e.name is not none else e.entity_id] %}
+          {% endif %}
+        {% endfor %}
+        {{ ns.lst }}
+      open_windows_count: "{{ open_windows_names | length }}"
+      open_windows_text: "{{ open_windows_names | join(', ') if (open_windows_names | length) > 0 else 'brak' }}"
+
+      quiet_by_entity: >
+        {% if v_quiet_entity in ['', none] %}
+          false
+        {% else %}
+          {{ states(v_quiet_entity) in ['on', 'true', 'home'] }}
+        {% endif %}
+      quiet_by_schedule: "{{ (v_quiet_schedule_entities | select('is_state', 'on') | list | length) > 0 }}"
+      quiet_active: "{{ v_quiet_enabled and (quiet_by_entity or quiet_by_schedule) }}"
+
+      notify_precip_allowed: "{{ v_notify_precip_enabled and ((not quiet_active) or v_allow_precip_in_quiet) }}"
+      notify_away_allowed: "{{ v_notify_away_enabled and ((not quiet_active) or v_allow_away_in_quiet) }}"
+      notify_advisor_allowed: "{{ v_notify_advisor_enabled and ((not quiet_active) or v_allow_advisor_in_quiet) }}"
+      notify_summary_allowed: "{{ v_notify_night_summary_enabled and ((not quiet_active) or v_allow_summary_in_quiet) }}"
+
+      tts_schedule_ok: >
+        {% if v_tts_schedule_entities | length == 0 %}
+          true
+        {% else %}
+          {{ (v_tts_schedule_entities | select('is_state', 'on') | list | length) > 0 }}
+        {% endif %}
+      tts_common_allowed: >
+        {{ v_tts_enabled and tts_schedule_ok and v_tts_engine_entity not in ['', none] and v_tts_media_player_entity not in ['', none] }}
+
+      indoor_t: "{{ states(v_indoor_temperature_sensor) | float(9999) if v_indoor_temperature_sensor not in ['', none] else 9999 }}"
+      outdoor_t: "{{ states(v_outdoor_temperature_sensor) | float(9999) if v_outdoor_temperature_sensor not in ['', none] else 9999 }}"
+      indoor_h: "{{ states(v_indoor_humidity_sensor) | float(9999) if v_indoor_humidity_sensor not in ['', none] else 9999 }}"
+      outdoor_h: "{{ states(v_outdoor_humidity_sensor) | float(9999) if v_outdoor_humidity_sensor not in ['', none] else 9999 }}"
+      co2_value: "{{ states(v_co2_sensor) | int(0) if v_co2_sensor not in ['', none] else 0 }}"
+      delta_temp: "{{ (indoor_t | float(0) - outdoor_t | float(0)) | round(1) if indoor_t != 9999 and outdoor_t != 9999 else 0 }}"
+      delta_humidity: "{{ (indoor_h | float(0) - outdoor_h | float(0)) | round(0) if indoor_h != 9999 and outdoor_h != 9999 else 0 }}"
+
+      main_tag: >
+        {% set base = (v_window_sensors[0] if (v_window_sensors | length) > 0 else 'window') | string %}
+        window_guardian_main_{{ base | replace('.', '_') | replace(' ', '_') }}
+      critical_tag: >
+        {% set base = (v_window_sensors[0] if (v_window_sensors | length) > 0 else 'window') | string %}
+        window_guardian_critical_{{ base | replace('.', '_') | replace(' ', '_') }}
+
+  - if: "{{ v_enable_logging }}"
+    then:
+      - action: logbook.log
+        data:
+          name: "🪟 Window Guardian"
+          message: "Trigger: {{ trigger.id }} | open_windows: {{ open_windows_count }} | quiet: {{ quiet_active }}"
+
+  - choose:
+      - conditions:
+          - "{{ trigger.id == 'precip_risk' }}"
+          - "{{ notify_precip_allowed }}"
+          - "{{ open_windows_count | int(0) > 0 }}"
+        sequence:
+          - variables:
+              title_rendered: "{{ v_precip_title }}"
+              message_rendered: >
+                {% set t = v_precip_message %}
+                {% set t = t | replace('{windows}', open_windows_text) %}
+                {% set t = t | replace('{count}', open_windows_count | string) %}
+                {{ t }}
+
+          - repeat:
+              for_each: "{{ v_notify_entities }}"
+              sequence:
+                - action: notify.send_message
+                  continue_on_error: true
+                  target:
+                    entity_id: "{{ repeat.item }}"
+                  data:
+                    title: "{{ title_rendered }}"
+                    message: "{{ message_rendered }}"
+                    data:
+                      tag: "{{ critical_tag }}"
+                      group: window_critical
+
+          - if: "{{ tts_common_allowed and v_tts_precip_enabled }}"
+            then:
+              - action: tts.speak
+                continue_on_error: true
+                target:
+                  entity_id: "{{ v_tts_engine_entity }}"
+                data:
+                  media_player_entity_id: "{{ v_tts_media_player_entity }}"
+                  message: "{{ message_rendered }}"
+
+      - conditions:
+          - "{{ trigger.id == 'away_open' }}"
+          - "{{ notify_away_allowed }}"
+          - "{{ open_windows_count | int(0) > 0 }}"
+        sequence:
+          - variables:
+              title_rendered: "{{ v_away_title }}"
+              message_rendered: >
+                {% set t = v_away_message %}
+                {% set t = t | replace('{windows}', open_windows_text) %}
+                {% set t = t | replace('{count}', open_windows_count | string) %}
+                {{ t }}
+
+          - repeat:
+              for_each: "{{ v_notify_entities }}"
+              sequence:
+                - action: notify.send_message
+                  continue_on_error: true
+                  target:
+                    entity_id: "{{ repeat.item }}"
+                  data:
+                    title: "{{ title_rendered }}"
+                    message: "{{ message_rendered }}"
+                    data:
+                      tag: "{{ main_tag }}"
+                      group: window_main
+
+          - if: "{{ tts_common_allowed and v_tts_away_enabled }}"
+            then:
+              - action: tts.speak
+                continue_on_error: true
+                target:
+                  entity_id: "{{ v_tts_engine_entity }}"
+                data:
+                  media_player_entity_id: "{{ v_tts_media_player_entity }}"
+                  message: "{{ message_rendered }}"
+
+      - conditions:
+          - "{{ trigger.id == 'advisor_open' }}"
+          - "{{ notify_advisor_allowed }}"
+        sequence:
+          - variables:
+              title_rendered: "{{ v_advisor_open_title }}"
+              message_rendered: >
+                {% set t = v_advisor_open_message %}
+                {% set t = t | replace('{delta_temp}', delta_temp | string) %}
+                {% set t = t | replace('{delta_humidity}', delta_humidity | string) %}
+                {% set t = t | replace('{co2}', co2_value | string) %}
+                {{ t }}
+
+          - repeat:
+              for_each: "{{ v_notify_entities }}"
+              sequence:
+                - action: notify.send_message
+                  continue_on_error: true
+                  target:
+                    entity_id: "{{ repeat.item }}"
+                  data:
+                    title: "{{ title_rendered }}"
+                    message: "{{ message_rendered }}"
+                    data:
+                      tag: "{{ main_tag }}"
+                      group: window_main
+
+          - if: "{{ tts_common_allowed and v_tts_advisor_enabled }}"
+            then:
+              - action: tts.speak
+                continue_on_error: true
+                target:
+                  entity_id: "{{ v_tts_engine_entity }}"
+                data:
+                  media_player_entity_id: "{{ v_tts_media_player_entity }}"
+                  message: "{{ message_rendered }}"
+
+      - conditions:
+          - "{{ trigger.id == 'advisor_avoid' }}"
+          - "{{ notify_advisor_allowed }}"
+          - "{{ open_windows_count | int(0) > 0 }}"
+        sequence:
+          - variables:
+              title_rendered: "{{ v_advisor_avoid_title }}"
+              message_rendered: >
+                {% set t = v_advisor_avoid_message %}
+                {% set t = t | replace('{delta_temp}', ((outdoor_t | float(0) - indoor_t | float(0)) | round(1)) | string) %}
+                {% set t = t | replace('{windows}', open_windows_text) %}
+                {% set t = t | replace('{count}', open_windows_count | string) %}
+                {{ t }}
+
+          - repeat:
+              for_each: "{{ v_notify_entities }}"
+              sequence:
+                - action: notify.send_message
+                  continue_on_error: true
+                  target:
+                    entity_id: "{{ repeat.item }}"
+                  data:
+                    title: "{{ title_rendered }}"
+                    message: "{{ message_rendered }}"
+                    data:
+                      tag: "{{ main_tag }}"
+                      group: window_main
+
+          - if: "{{ tts_common_allowed and v_tts_advisor_enabled }}"
+            then:
+              - action: tts.speak
+                continue_on_error: true
+                target:
+                  entity_id: "{{ v_tts_engine_entity }}"
+                data:
+                  media_player_entity_id: "{{ v_tts_media_player_entity }}"
+                  message: "{{ message_rendered }}"
+
+      - conditions:
+          - "{{ trigger.id == 'night_summary' }}"
+          - "{{ notify_summary_allowed }}"
+        sequence:
+          - variables:
+              title_rendered: "{{ v_night_summary_title }}"
+              message_rendered: >
+                {% set t = v_night_summary_message %}
+                {% set t = t | replace('{windows}', open_windows_text) %}
+                {% set t = t | replace('{count}', open_windows_count | string) %}
+                {{ t }}
+
+          - repeat:
+              for_each: "{{ v_notify_entities }}"
+              sequence:
+                - action: notify.send_message
+                  continue_on_error: true
+                  target:
+                    entity_id: "{{ repeat.item }}"
+                  data:
+                    title: "{{ title_rendered }}"
+                    message: "{{ message_rendered }}"
+                    data:
+                      tag: "{{ main_tag }}"
+                      group: window_main
+
+          - if: "{{ tts_common_allowed and v_tts_summary_enabled }}"
+            then:
+              - action: tts.speak
+                continue_on_error: true
+                target:
+                  entity_id: "{{ v_tts_engine_entity }}"
+                data:
+                  media_player_entity_id: "{{ v_tts_media_player_entity }}"
+                  message: "{{ message_rendered }}"
+
+mode: parallel
+max: 20
+max_exceeded: silent
