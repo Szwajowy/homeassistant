@@ -166,7 +166,7 @@ blueprint:
       name: "🌡️ Doradca wietrzenia"
       icon: mdi:air-filter
       collapsed: true
-      description: "Podpowiedzi kiedy warto otworzyć lub zamknąć okna."
+      description: "Podpowiedzi kiedy warto otworzyć lub zamknąć okna. Czujniki mogą być automatycznie mapowane po pomieszczeniach (area)."
       input:
         advisor_enabled:
           name: "🧠 Włącz doradcę"
@@ -193,8 +193,8 @@ blueprint:
               domain: sensor
 
         indoor_temperature_sensors:
-          name: "🏠 Temperatury wewnętrzne (wiele, opcjonalne)"
-          description: "Jeśli wybierzesz kilka, użyta będzie średnia."
+          name: "🏠 Temperatury wewnętrzne pokojowe (wiele, opcjonalne)"
+          description: "Jeśli przypiszesz encje do pomieszczeń, blueprint sam powiąże je z oknami po area."
           default: []
           selector:
             entity:
@@ -254,6 +254,15 @@ blueprint:
             entity:
               domain: sensor
 
+        indoor_humidity_sensors:
+          name: "🏠 Wilgotności wewnętrzne pokojowe (wiele, opcjonalne)"
+          description: "Opcjonalna lista do mapowania po pomieszczeniach (area)."
+          default: []
+          selector:
+            entity:
+              domain: sensor
+              multiple: true
+
         outdoor_humidity_sensor:
           name: "🌦️ Wilgotność zewnętrzna (opcjonalna)"
           default: ""
@@ -284,6 +293,15 @@ blueprint:
           selector:
             entity:
               domain: sensor
+
+        indoor_co2_sensors:
+          name: "🫁 Sensory CO2 pokojowe (wiele, opcjonalne)"
+          description: "Opcjonalna lista do mapowania po pomieszczeniach (area)."
+          default: []
+          selector:
+            entity:
+              domain: sensor
+              multiple: true
 
         co2_threshold:
           name: "🫁 Próg CO2 dla rekomendacji otwarcia"
@@ -690,10 +708,12 @@ actions:
       v_allow_warming_when_indoor_below: !input allow_warming_when_indoor_below
       v_use_humidity_guard: !input use_humidity_guard
       v_indoor_humidity_sensor: !input indoor_humidity_sensor
+      v_indoor_humidity_sensors: !input indoor_humidity_sensors
       v_outdoor_humidity_sensor: !input outdoor_humidity_sensor
       v_humidity_outdoor_higher_by: !input humidity_outdoor_higher_by
       v_use_co2_guard: !input use_co2_guard
       v_indoor_co2_sensor: !input indoor_co2_sensor
+      v_indoor_co2_sensors: !input indoor_co2_sensors
       v_co2_threshold: !input co2_threshold
 
       v_notify_entities: !input notify_entities
@@ -754,6 +774,42 @@ actions:
           {% endif %}
         {% endfor %}
         {{ ns.lst | join(', ') if (ns.lst | length) > 0 else 'brak' }}
+      open_windows_grouped: >
+        {% set areas = namespace(ids=[]) %}
+        {% for e in expand(v_window_sensors) %}
+          {% if e.state in ['on', 'open', 'tilted'] %}
+            {% set aid = area_id(e.entity_id) if area_id(e.entity_id) is not none else '__no_area__' %}
+            {% if aid not in areas.ids %}
+              {% set areas.ids = areas.ids + [aid] %}
+            {% endif %}
+          {% endif %}
+        {% endfor %}
+        {% set groups = namespace(lines=[]) %}
+        {% for aid in areas.ids %}
+          {% set ns = namespace(names=[]) %}
+          {% for e in expand(v_window_sensors) %}
+            {% if e.state in ['on', 'open', 'tilted'] %}
+              {% set eaid = area_id(e.entity_id) if area_id(e.entity_id) is not none else '__no_area__' %}
+              {% if eaid == aid %}
+                {% set ns.names = ns.names + [(e.name if e.name is not none else e.entity_id)] %}
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+          {% set label = (area_name(aid) if aid != '__no_area__' else 'Bez przypisanego pomieszczenia') %}
+          {% set groups.lines = groups.lines + [label ~ ': ' ~ (ns.names | join(', '))] %}
+        {% endfor %}
+        {{ groups.lines | join(' | ') if (groups.lines | length) > 0 else 'brak' }}
+      open_window_area_ids: >
+        {% set ns = namespace(ids=[]) %}
+        {% for e in expand(v_window_sensors) %}
+          {% if e.state in ['on', 'open', 'tilted'] %}
+            {% set aid = area_id(e.entity_id) %}
+            {% if aid is not none and aid not in ns.ids %}
+              {% set ns.ids = ns.ids + [aid] %}
+            {% endif %}
+          {% endif %}
+        {% endfor %}
+        {{ ns.ids }}
 
       someone_home: "{{ (v_people_entities | length > 0) and ((v_people_entities | select('is_state', 'home') | list | length) > 0) }}"
       away_override_on: >
@@ -853,8 +909,18 @@ actions:
       has_indoor_multi_temp: "{{ v_indoor_temperature_sensors | length > 0 }}"
       indoor_temp: >
         {% if has_indoor_multi_temp %}
-          {% set vals = expand(v_indoor_temperature_sensors) | map(attribute='state') | map('float', 0) | list %}
-          {{ (vals | sum / (vals | length if (vals | length) > 0 else 1)) | round(1) }}
+          {% set ns = namespace(vals=[]) %}
+          {% if open_window_area_ids | length > 0 %}
+            {% for s in expand(v_indoor_temperature_sensors) %}
+              {% if area_id(s.entity_id) in open_window_area_ids %}
+                {% set ns.vals = ns.vals + [s.state | float(0)] %}
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+          {% if ns.vals | length == 0 %}
+            {% set ns.vals = expand(v_indoor_temperature_sensors) | map(attribute='state') | map('float', 0) | list %}
+          {% endif %}
+          {{ (ns.vals | sum / (ns.vals | length if (ns.vals | length) > 0 else 1)) | round(1) }}
         {% elif v_indoor_temperature_sensor not in ['', none] %}
           {{ states(v_indoor_temperature_sensor) | float(0) | round(1) }}
         {% else %}
@@ -874,7 +940,20 @@ actions:
         }}
 
       indoor_humidity: >
-        {% if v_indoor_humidity_sensor not in ['', none] %}
+        {% if v_indoor_humidity_sensors | length > 0 %}
+          {% set ns = namespace(vals=[]) %}
+          {% if open_window_area_ids | length > 0 %}
+            {% for s in expand(v_indoor_humidity_sensors) %}
+              {% if area_id(s.entity_id) in open_window_area_ids %}
+                {% set ns.vals = ns.vals + [s.state | float(0)] %}
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+          {% if ns.vals | length == 0 %}
+            {% set ns.vals = expand(v_indoor_humidity_sensors) | map(attribute='state') | map('float', 0) | list %}
+          {% endif %}
+          {{ (ns.vals | sum / (ns.vals | length if (ns.vals | length) > 0 else 1)) | round(1) }}
+        {% elif v_indoor_humidity_sensor not in ['', none] %}
           {{ states(v_indoor_humidity_sensor) | float(0) }}
         {% else %}
           {{ 0 }}
@@ -893,7 +972,20 @@ actions:
         {% endif %}
 
       co2_high: >
-        {% if v_use_co2_guard and v_indoor_co2_sensor not in ['', none] %}
+        {% if v_use_co2_guard and v_indoor_co2_sensors | length > 0 %}
+          {% set ns = namespace(vals=[]) %}
+          {% if open_window_area_ids | length > 0 %}
+            {% for s in expand(v_indoor_co2_sensors) %}
+              {% if area_id(s.entity_id) in open_window_area_ids %}
+                {% set ns.vals = ns.vals + [s.state | float(0)] %}
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+          {% if ns.vals | length == 0 %}
+            {% set ns.vals = expand(v_indoor_co2_sensors) | map(attribute='state') | map('float', 0) | list %}
+          {% endif %}
+          {{ (ns.vals | max(0)) >= (v_co2_threshold | float(0)) }}
+        {% elif v_use_co2_guard and v_indoor_co2_sensor not in ['', none] %}
           {{ (states(v_indoor_co2_sensor) | float(0)) >= (v_co2_threshold | float(0)) }}
         {% else %}
           false
@@ -939,12 +1031,12 @@ actions:
 
       msg_precip: >
         {% set t = v_message_precip %}
-        {% set t = t | replace('{open_windows}', open_windows_names) %}
+        {% set t = t | replace('{open_windows}', open_windows_grouped) %}
         {% set t = t | replace('{weather_state}', weather_state) %}
         {{ t }}
       msg_away: >
         {% set t = v_message_away %}
-        {% set t = t | replace('{open_windows}', open_windows_names) %}
+        {% set t = t | replace('{open_windows}', open_windows_grouped) %}
         {{ t }}
       msg_advisor_open: >
         {% set t = v_message_advisor_open %}
@@ -956,7 +1048,7 @@ actions:
         {% set t = v_message_advisor_close %}
         {% set t = t | replace('{indoor_temp}', indoor_temp | string) %}
         {% set t = t | replace('{outdoor_temp}', outdoor_temp | string) %}
-        {% set t = t | replace('{open_windows}', open_windows_names) %}
+        {% set t = t | replace('{open_windows}', open_windows_grouped) %}
         {{ t }}
 
       action_snooze: "WINDOW_SNOOZE_{{ context.id }}"
