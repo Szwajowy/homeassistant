@@ -616,7 +616,7 @@ trigger_variables:
 triggers:
   - trigger: template
     value_template: >
-      {{ states(wd_state_sensor_input) | lower in ['running', 'run', 'on'] }}
+      {{ states(wd_state_sensor_input) | lower in ['starting', 'running', 'run', 'on'] }}
     id: cycle_start
 
   - trigger: state
