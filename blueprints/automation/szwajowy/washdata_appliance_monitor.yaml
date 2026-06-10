@@ -600,6 +600,7 @@ max: 20
 max_exceeded: silent
 
 trigger_variables:
+  wd_state_sensor_input: !input wd_state_sensor
   flood_sensor_entities_input: !input flood_sensor_entity
   flood_sensor_entity_input: >
     {% if flood_sensor_entities_input in [none, ''] %}
@@ -613,9 +614,9 @@ trigger_variables:
     {% endif %}
 
 triggers:
-  - trigger: state
-    entity_id: !input wd_state_sensor
-    to: "Running"
+  - trigger: template
+    value_template: >
+      {{ states(wd_state_sensor_input) | lower in ['running', 'run', 'on'] }}
     id: cycle_start
 
   - trigger: state
