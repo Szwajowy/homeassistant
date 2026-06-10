@@ -1048,10 +1048,8 @@ actions:
                   - repeat:
                       for_each: "{{ v_notify_entities }}"
                       sequence:
-                        - action: notify.send_message
+                        - action: "{{ repeat.item }}"
                           continue_on_error: true
-                          target:
-                            entity_id: "{{ repeat.item }}"
                           data:
                             title: "{{ v_title_precip }}"
                             message: "{{ msg_precip }}"
@@ -1080,10 +1078,8 @@ actions:
                   - repeat:
                       for_each: "{{ v_notify_entities }}"
                       sequence:
-                        - action: notify.send_message
+                        - action: "{{ repeat.item }}"
                           continue_on_error: true
-                          target:
-                            entity_id: "{{ repeat.item }}"
                           data:
                             title: "{{ v_title_away }}"
                             message: "{{ msg_away }}"
@@ -1117,10 +1113,8 @@ actions:
                               - repeat:
                                   for_each: "{{ v_notify_entities }}"
                                   sequence:
-                                    - action: notify.send_message
+                                    - action: "{{ repeat.item }}"
                                       continue_on_error: true
-                                      target:
-                                        entity_id: "{{ repeat.item }}"
                                       data:
                                         title: "{{ v_title_away }}"
                                         message: "{{ msg_away }}"
@@ -1146,10 +1140,8 @@ actions:
                   - repeat:
                       for_each: "{{ v_notify_entities }}"
                       sequence:
-                        - action: notify.send_message
+                        - action: "{{ repeat.item }}"
                           continue_on_error: true
-                          target:
-                            entity_id: "{{ repeat.item }}"
                           data:
                             title: "{{ v_title_advisor_close }}"
                             message: "{{ msg_advisor_close }}"
@@ -1183,10 +1175,8 @@ actions:
                               - repeat:
                                   for_each: "{{ v_notify_entities }}"
                                   sequence:
-                                    - action: notify.send_message
+                                    - action: "{{ repeat.item }}"
                                       continue_on_error: true
-                                      target:
-                                        entity_id: "{{ repeat.item }}"
                                       data:
                                         title: "{{ v_title_advisor_close }}"
                                         message: "{{ msg_advisor_close }}"
@@ -1212,10 +1202,8 @@ actions:
                   - repeat:
                       for_each: "{{ v_notify_entities }}"
                       sequence:
-                        - action: notify.send_message
+                        - action: "{{ repeat.item }}"
                           continue_on_error: true
-                          target:
-                            entity_id: "{{ repeat.item }}"
                           data:
                             title: "{{ v_title_advisor_open }}"
                             message: "{{ msg_advisor_open }}"
@@ -1249,10 +1237,8 @@ actions:
                               - repeat:
                                   for_each: "{{ v_notify_entities }}"
                                   sequence:
-                                    - action: notify.send_message
+                                    - action: "{{ repeat.item }}"
                                       continue_on_error: true
-                                      target:
-                                        entity_id: "{{ repeat.item }}"
                                       data:
                                         title: "{{ v_title_advisor_open }}"
                                         message: "{{ msg_advisor_open }}"
@@ -1287,10 +1273,8 @@ actions:
           - repeat:
               for_each: "{{ v_notify_entities }}"
               sequence:
-                - action: notify.send_message
+                - action: "{{ repeat.item }}"
                   continue_on_error: true
-                  target:
-                    entity_id: "{{ repeat.item }}"
                   data:
                     title: "{{ v_title_summary }}"
                     message: "{{ summary_message }}"
