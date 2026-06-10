@@ -647,7 +647,18 @@ triggers:
 
   - trigger: template
     value_template: >
-      {{ away_override_entity_input not in ['', none] and states(away_override_entity_input) not in ['unknown', 'unavailable', 'none'] }}
+      {{
+        away_override_entity_input not in ['', none]
+        and (states(away_override_entity_input) | lower) in ['on', 'true', 'home', '1', 'open']
+      }}
+    id: state_change
+
+  - trigger: template
+    value_template: >
+      {{
+        away_override_entity_input not in ['', none]
+        and (states(away_override_entity_input) | lower) in ['off', 'false', 'not_home', '0', 'closed']
+      }}
     id: state_change
 
   - trigger: time_pattern
