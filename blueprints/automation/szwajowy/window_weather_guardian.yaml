@@ -159,6 +159,17 @@ blueprint:
                 - domain: binary_sensor
                 - domain: input_boolean
 
+        away_repeat_cooldown_minutes:
+          name: "⏱️ Minimalny odstęp między alertami all-away (min)"
+          description: "0 = bez limitu. Ustaw np. 10-30, żeby nie dostawać serii powiadomień przy szybkim przełączaniu trybu poza domem."
+          default: 15
+          selector:
+            number:
+              min: 0
+              max: 240
+              step: 1
+              mode: box
+
     # =========================================================================
     # 🌡️ SEKCJA 4: DORADCA WIETRZENIA
     # =========================================================================
@@ -693,6 +704,7 @@ actions:
       v_away_alert_enabled: !input away_alert_enabled
       v_people_entities: !input people_entities
       v_away_override_entity: !input away_override_entity
+      v_away_repeat_cooldown_minutes: !input away_repeat_cooldown_minutes
 
       v_advisor_enabled: !input advisor_enabled
       v_advisor_check_interval_minutes: !input advisor_check_interval_minutes
@@ -813,6 +825,13 @@ actions:
           {{ s in ['on', 'true', 'home', '1', 'open'] }}
         {% endif %}
       all_away: "{{ (v_people_entities | length > 0 and not someone_home) or away_override_on }}"
+      away_cooldown_ok: >
+        {% set cooldown_s = (v_away_repeat_cooldown_minutes | int(0)) * 60 %}
+        {% if cooldown_s <= 0 %}
+          true
+        {% else %}
+          {{ (as_timestamp(now()) - as_timestamp(this.attributes.last_triggered, 0)) >= cooldown_s }}
+        {% endif %}
 
       quiet_by_entity: >
         {% if v_quiet_entity in ['', none] %}
@@ -1012,7 +1031,7 @@ actions:
       advisor_tick: "{{ (now().minute % (v_advisor_check_interval_minutes | int(1))) == 0 }}"
 
       should_send_precip: "{{ v_precip_alert_enabled and v_notify_precip_enabled and allow_precip_notifications and night_active and (open_windows_count | int(0) > 0) and precip_detected }}"
-      should_send_away: "{{ v_away_alert_enabled and v_notify_away_enabled and allow_away_notifications and (open_windows_count | int(0) > 0) and all_away }}"
+      should_send_away: "{{ v_away_alert_enabled and v_notify_away_enabled and allow_away_notifications and (trigger.id != 'heartbeat') and away_cooldown_ok and (open_windows_count | int(0) > 0) and all_away }}"
       should_send_advisor_open: "{{ v_notify_advisor_enabled and allow_advisor_notifications and advisor_recommend_open and (trigger.id != 'heartbeat' or advisor_tick) }}"
       should_send_advisor_close: "{{ v_notify_advisor_enabled and allow_advisor_notifications and advisor_recommend_close and (trigger.id != 'heartbeat' or advisor_tick) }}"
 
