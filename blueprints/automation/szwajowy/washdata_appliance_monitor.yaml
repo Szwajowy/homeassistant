@@ -838,7 +838,7 @@ actions:
                   {{ ns.active }}
                 {% endif %}
 
-          - if: "{{ v_start_enabled and not non_flood_notifications_muted }}"
+          - if: "{{ v_start_enabled | bool and not (non_flood_notifications_muted | bool) }}"
             then:
               - repeat:
                   for_each: "{{ notify_entities }}"
@@ -853,7 +853,7 @@ actions:
 
           - if:
               - "{{ v_tts_enabled and v_tts_start_enabled }}"
-              - "{{ not non_flood_notifications_muted }}"
+              - "{{ not (non_flood_notifications_muted | bool) }}"
               - "{{ tts_allowed }}"
               - "{{ v_tts_engine_entity not in ['', none] }}"
               - "{{ v_tts_media_player_entity not in ['', none] }}"
@@ -871,7 +871,7 @@ actions:
                     {{ t }}
 
           - if:
-              - "{{ not non_flood_notifications_muted }}"
+              - "{{ not (non_flood_notifications_muted | bool) }}"
               - "{{ v_expensive_enabled and (expensive_now or expensive_near) }}"
             then:
               - variables:
@@ -898,9 +898,9 @@ actions:
 
       - conditions:
           - "{{ trigger.id == 'cycle_pre_end' }}"
-          - "{{ v_pre_end_enabled }}"
-          - "{{ not non_flood_notifications_muted }}"
-          - "{{ states(v_wd_state_sensor) == 'Running' }}"
+          - "{{ v_pre_end_enabled | bool }}"
+          - "{{ not (non_flood_notifications_muted | bool) }}"
+          - "{{ states(v_wd_state_sensor) | lower in ['running', 'starting', 'run', 'on'] }}"
         sequence:
           - variables:
               pre_end_title_rendered: >
@@ -945,11 +945,11 @@ actions:
                 {{ t }}
 
           - if:
-              - "{{ v_delay_finish_until_home and not non_flood_notifications_muted and (v_people_entities | length > 0) and not someone_home }}"
+              - "{{ v_delay_finish_until_home | bool and not (non_flood_notifications_muted | bool) and (v_people_entities | length > 0) and not someone_home }}"
             then:
               - wait_template: "{{ (v_people_entities | select('is_state', 'home') | list | length) > 0 }}"
 
-          - if: "{{ v_finish_enabled and not v_finish_actionable and not non_flood_notifications_muted }}"
+          - if: "{{ v_finish_enabled | bool and not (v_finish_actionable | bool) and not (non_flood_notifications_muted | bool) }}"
             then:
               - repeat:
                   for_each: "{{ notify_entities }}"
@@ -962,7 +962,7 @@ actions:
                         title: "{{ finish_title_rendered }}"
                         message: "{{ finish_message_rendered }}"
 
-          - if: "{{ v_finish_enabled and v_finish_actionable and not non_flood_notifications_muted }}"
+          - if: "{{ v_finish_enabled | bool and v_finish_actionable | bool and not (non_flood_notifications_muted | bool) }}"
             then:
               - variables:
                   finish_dismissed: false
@@ -1003,7 +1003,7 @@ actions:
 
           - if:
               - "{{ v_tts_enabled and v_tts_finish_enabled }}"
-              - "{{ not non_flood_notifications_muted }}"
+              - "{{ not (non_flood_notifications_muted | bool) }}"
               - "{{ tts_allowed }}"
               - "{{ v_tts_engine_entity not in ['', none] }}"
               - "{{ v_tts_media_player_entity not in ['', none] }}"
@@ -1022,7 +1022,7 @@ actions:
 
           - if:
               - "{{ v_maintenance_enabled }}"
-              - "{{ not non_flood_notifications_muted }}"
+              - "{{ not (non_flood_notifications_muted | bool) }}"
               - "{{ cycle_count | int(0) > 0 }}"
               - "{{ (cycle_count | int(0)) % (v_maintenance_every_cycles | int(1)) == 0 }}"
             then:
