@@ -111,8 +111,8 @@ blueprint:
 
         precip_repeat_cooldown_minutes:
           name: "⏱️ Minimalny odstęp między alertami opadów (min)"
-          description: "0 = bez limitu. Ustaw np. 10-30, żeby nie dostawać serii alertów przy ciągłym deszczu i częstych zmianach encji pogodowej."
-          default: 15
+          description: "0 = tylko 1 alert na epizod opadów (kolejny dopiero po zmianie pogody na bez opadów i ponownym wejściu w opady). Wartość > 0 = powtarzaj co X minut."
+          default: 0
           selector:
             number:
               min: 0
@@ -853,6 +853,8 @@ actions:
           {{ (as_timestamp(now()) - as_timestamp(this.attributes.last_triggered, 0)) >= cooldown_s }}
         {% endif %}
 
+      precip_repeat_enabled: "{{ (v_precip_repeat_cooldown_minutes | int(0)) > 0 }}"
+
       quiet_by_entity: >
         {% if v_quiet_entity in ['', none] %}
           false
@@ -899,6 +901,16 @@ actions:
       weather_state: "{{ states(v_weather_entity) }}"
       precip_now_rain: "{{ weather_state in ['rainy', 'pouring', 'lightning-rainy'] }}"
       precip_now_snow: "{{ weather_state in ['snowy', 'snowy-rainy'] }}"
+
+      weather_changed_to_precip: >
+        {% if trigger.id == 'state_change' and trigger.entity_id == v_weather_entity and trigger.to_state is not none %}
+          {% set curr = trigger.to_state.state | lower %}
+          {% set prev = trigger.from_state.state | lower if trigger.from_state is not none else '' %}
+          {% set precip_states = ['rainy', 'pouring', 'lightning-rainy', 'snowy', 'snowy-rainy'] %}
+          {{ (curr in precip_states) and (prev not in precip_states) }}
+        {% else %}
+          false
+        {% endif %}
 
       precip_soon_rain: >
         {% if (v_precip_forecast_minutes | int(0)) <= 0 %}
@@ -1050,7 +1062,20 @@ actions:
 
       advisor_tick: "{{ (now().minute % (v_advisor_check_interval_minutes | int(1))) == 0 }}"
 
-      should_send_precip: "{{ v_precip_alert_enabled and v_notify_precip_enabled and allow_precip_notifications and (trigger.id != 'heartbeat') and precip_cooldown_ok and (open_windows_count | int(0) > 0) and precip_detected }}"
+      should_send_precip: >
+        {{
+          v_precip_alert_enabled
+          and v_notify_precip_enabled
+          and allow_precip_notifications
+          and (trigger.id != 'heartbeat')
+          and (open_windows_count | int(0) > 0)
+          and precip_detected
+          and (
+            (precip_repeat_enabled and precip_cooldown_ok)
+            or
+            ((not precip_repeat_enabled) and weather_changed_to_precip)
+          )
+        }}
       should_send_away: "{{ v_away_alert_enabled and v_notify_away_enabled and allow_away_notifications and (trigger.id != 'heartbeat') and away_cooldown_ok and (open_windows_count | int(0) > 0) and all_away }}"
       should_send_advisor_open: "{{ v_notify_advisor_enabled and allow_advisor_notifications and advisor_recommend_open and (trigger.id != 'heartbeat' or advisor_tick) }}"
       should_send_advisor_close: "{{ v_notify_advisor_enabled and allow_advisor_notifications and advisor_recommend_close and (trigger.id != 'heartbeat' or advisor_tick) }}"
