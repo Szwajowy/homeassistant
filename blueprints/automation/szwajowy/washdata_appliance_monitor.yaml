@@ -617,6 +617,8 @@ triggers:
   - trigger: template
     value_template: >
       {{ states(wd_state_sensor_input) | lower in ['starting', 'running', 'run', 'on'] }}
+    for:
+      seconds: 5
     id: cycle_start
 
   - trigger: state
@@ -729,6 +731,17 @@ actions:
         {% endif %}
       away_active: "{{ v_away_mode_enabled and (all_away or away_override_on) }}"
 
+      start_transition_ok: >
+        {% if trigger.id != 'cycle_start' %}
+          false
+        {% else %}
+          {% set from_s = (trigger.from_state.state | lower) if trigger.from_state is not none else '' %}
+          {% set to_s = (trigger.to_state.state | lower) if trigger.to_state is not none else (states(v_wd_state_sensor) | lower) %}
+          {% set start_states = ['starting', 'running', 'run', 'on'] %}
+          {% set idle_states = ['off', 'idle', 'finished', 'clean', 'unknown', 'unavailable', 'force_stopped', 'interrupted'] %}
+          {{ (to_s in start_states) and (from_s in idle_states or from_s == '') }}
+        {% endif %}
+
       tts_allowed: >
         {% if v_tts_schedule_entities | length == 0 %}
           true
@@ -799,7 +812,16 @@ actions:
   - choose:
       - conditions:
           - "{{ trigger.id == 'cycle_start' }}"
+          - "{{ start_transition_ok }}"
         sequence:
+          - variables:
+              fresh_start: >-
+                {{ (as_timestamp(now()) - as_timestamp(states[v_wd_state_sensor].last_changed, 0)) < 300 }}
+
+          - if: "{{ not fresh_start }}"
+            then:
+              - stop: "Cycle start already reported (automation reload guard)"
+
           - variables:
               start_title_rendered: >
                 {% set t = v_start_title %}
@@ -838,7 +860,7 @@ actions:
                   {{ ns.active }}
                 {% endif %}
 
-          - if: "{{ v_start_enabled | bool and not (non_flood_notifications_muted | bool) }}"
+          - if: "{{ v_start_enabled | bool and not (non_flood_notifications_muted | bool) and fresh_start }}"
             then:
               - repeat:
                   for_each: "{{ notify_entities }}"
