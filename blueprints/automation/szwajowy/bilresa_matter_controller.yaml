@@ -1,0 +1,1007 @@
+blueprint:
+  name: "🎛️ IKEA Bilresa Matter — 3 kanały pokrętła"
+  description: |
+    ## 🎛️ IKEA Bilresa przez Matter over Thread
+
+    Blueprint do pełnej konfiguracji pilota **IKEA Bilresa scroll wheel** w Home Assistant,
+    bez zgadywania nazw encji i bez regexów zależnych od nazewnictwa.
+
+    ## ⚡ Założenia
+    - Pilot działa przez **Matter over Thread**.
+    - Użytkownik **ręcznie wskazuje** encje event/sensor dla wszystkich 3 kanałów.
+    - 3 tryby pilota są traktowane jako **3 natywne kanały** urządzenia.
+    - Domyślnie pokrętło steruje:
+      - `light`: jasnością / temperaturą barwową / kolorem
+      - `media_player`: głośnością
+    - Pojedynczy klik domyślnie:
+      - `light`: przełącza `on/off`
+      - `media_player`: `play/pause`
+
+    ## 🧩 Co trzeba wskazać
+    Dla każdego kanału wybierz ręcznie:
+    - encję event przycisku pokrętła,
+    - encję event obrotu w lewo i w prawo dla trybu `relaxed`,
+    - encję sensor obrotu w lewo i w prawo dla trybu `instant`,
+    - encję docelową (`light` albo `media_player`).
+
+    ## ℹ️ Uwagi
+    - Tryb `instant` wymaga wskazania odpowiednich sensorów i ich uprzedniego włączenia w HA.
+    - Ten blueprint nie steruje bezpośrednio diodami na pilocie. Korzysta z 3 natywnych kanałów Bilresa,
+      które już wynikają z fizycznego wyboru trybu na urządzeniu.
+    - Dla trybu `user defined` dostępne są zmienne:
+      - `scroll_clicks`
+      - `scroll_direction`
+      - `target_entity`
+      - `target_domain`
+      - `channel`
+
+  domain: automation
+  author: Szwajowy
+  source_url: https://github.com/Szwajowy/homeassistant/blob/master/blueprints/automation/szwajowy/bilresa_matter_controller.yaml
+  homeassistant:
+    min_version: "2024.10.0"
+
+  input:
+    channel_1_section:
+      name: "1️⃣ Kanał 1"
+      icon: mdi:numeric-1-circle
+      input:
+        button_event_ch1:
+          name: "Kanał 1 • event kliknięcia pokrętła"
+          selector:
+            entity:
+              domain: event
+
+        scroll_left_event_ch1:
+          name: "Kanał 1 • event obrotu w lewo (relaxed)"
+          selector:
+            entity:
+              domain: event
+
+        scroll_right_event_ch1:
+          name: "Kanał 1 • event obrotu w prawo (relaxed)"
+          selector:
+            entity:
+              domain: event
+
+        scroll_left_sensor_ch1:
+          name: "Kanał 1 • sensor obrotu w lewo (instant)"
+          selector:
+            entity:
+              domain: sensor
+
+        scroll_right_sensor_ch1:
+          name: "Kanał 1 • sensor obrotu w prawo (instant)"
+          selector:
+            entity:
+              domain: sensor
+
+        target_entity_ch1:
+          name: "Kanał 1 • sterowana encja"
+          description: "Wybierz `light` albo `media_player` dla tego kanału."
+          selector:
+            entity:
+              filter:
+                - domain: light
+                - domain: media_player
+
+        scroll_wheel_mode_ch1:
+          name: "Kanał 1 • tryb pokrętła"
+          default: "lights: dim"
+          selector:
+            select:
+              options:
+                - "lights: dim"
+                - "lights: color temp and color hue"
+                - "lights: color temp only"
+                - "lights: color hue only"
+                - "media: volume control"
+                - "user defined"
+
+        scroll_wheel_mode_ext_ch1:
+          name: "Kanał 1 • tryb odczytu pokrętła"
+          description: "`relaxed` używa eventów z liczbą kroków. `instant` używa sensorów i wykonuje wiele szybkich wywołań."
+          default: "relaxed"
+          selector:
+            select:
+              options:
+                - "relaxed"
+                - "instant"
+
+        click_behavior_ch1:
+          name: "Kanał 1 • zachowanie pojedynczego kliku"
+          default: "default"
+          selector:
+            select:
+              options:
+                - label: "Domyślne"
+                  value: "default"
+                - label: "Domyślne + własna akcja"
+                  value: "append"
+                - label: "Tylko własna akcja"
+                  value: "override"
+
+        click_action_ch1:
+          name: "Kanał 1 • akcja pojedynczego kliku"
+          default: []
+          selector:
+            action:
+
+        double_click_action_ch1:
+          name: "Kanał 1 • akcja podwójnego kliku"
+          default: []
+          selector:
+            action:
+
+        triple_click_action_ch1:
+          name: "Kanał 1 • akcja potrójnego kliku"
+          default: []
+          selector:
+            action:
+
+        long_click_action_ch1:
+          name: "Kanał 1 • akcja na start przytrzymania"
+          default: []
+          selector:
+            action:
+
+        on_hold_action_ch1:
+          name: "Kanał 1 • akcja powtarzana podczas przytrzymania"
+          description: "Powtarzana aż do puszczenia przycisku, zgodnie z opóźnieniem globalnym."
+          default: []
+          selector:
+            action:
+
+        scroll_wheel_user_action_ch1:
+          name: "Kanał 1 • własna akcja obrotu"
+          description: "Używana tylko dla trybu `user defined`."
+          default: []
+          selector:
+            action:
+
+    channel_2_section:
+      name: "2️⃣ Kanał 2"
+      icon: mdi:numeric-2-circle
+      collapsed: true
+      input:
+        button_event_ch2:
+          name: "Kanał 2 • event kliknięcia pokrętła"
+          selector:
+            entity:
+              domain: event
+
+        scroll_left_event_ch2:
+          name: "Kanał 2 • event obrotu w lewo (relaxed)"
+          selector:
+            entity:
+              domain: event
+
+        scroll_right_event_ch2:
+          name: "Kanał 2 • event obrotu w prawo (relaxed)"
+          selector:
+            entity:
+              domain: event
+
+        scroll_left_sensor_ch2:
+          name: "Kanał 2 • sensor obrotu w lewo (instant)"
+          selector:
+            entity:
+              domain: sensor
+
+        scroll_right_sensor_ch2:
+          name: "Kanał 2 • sensor obrotu w prawo (instant)"
+          selector:
+            entity:
+              domain: sensor
+
+        target_entity_ch2:
+          name: "Kanał 2 • sterowana encja"
+          selector:
+            entity:
+              filter:
+                - domain: light
+                - domain: media_player
+
+        scroll_wheel_mode_ch2:
+          name: "Kanał 2 • tryb pokrętła"
+          default: "lights: dim"
+          selector:
+            select:
+              options:
+                - "lights: dim"
+                - "lights: color temp and color hue"
+                - "lights: color temp only"
+                - "lights: color hue only"
+                - "media: volume control"
+                - "user defined"
+
+        scroll_wheel_mode_ext_ch2:
+          name: "Kanał 2 • tryb odczytu pokrętła"
+          default: "relaxed"
+          selector:
+            select:
+              options:
+                - "relaxed"
+                - "instant"
+
+        click_behavior_ch2:
+          name: "Kanał 2 • zachowanie pojedynczego kliku"
+          default: "default"
+          selector:
+            select:
+              options:
+                - label: "Domyślne"
+                  value: "default"
+                - label: "Domyślne + własna akcja"
+                  value: "append"
+                - label: "Tylko własna akcja"
+                  value: "override"
+
+        click_action_ch2:
+          name: "Kanał 2 • akcja pojedynczego kliku"
+          default: []
+          selector:
+            action:
+
+        double_click_action_ch2:
+          name: "Kanał 2 • akcja podwójnego kliku"
+          default: []
+          selector:
+            action:
+
+        triple_click_action_ch2:
+          name: "Kanał 2 • akcja potrójnego kliku"
+          default: []
+          selector:
+            action:
+
+        long_click_action_ch2:
+          name: "Kanał 2 • akcja na start przytrzymania"
+          default: []
+          selector:
+            action:
+
+        on_hold_action_ch2:
+          name: "Kanał 2 • akcja powtarzana podczas przytrzymania"
+          default: []
+          selector:
+            action:
+
+        scroll_wheel_user_action_ch2:
+          name: "Kanał 2 • własna akcja obrotu"
+          default: []
+          selector:
+            action:
+
+    channel_3_section:
+      name: "3️⃣ Kanał 3"
+      icon: mdi:numeric-3-circle
+      collapsed: true
+      input:
+        button_event_ch3:
+          name: "Kanał 3 • event kliknięcia pokrętła"
+          selector:
+            entity:
+              domain: event
+
+        scroll_left_event_ch3:
+          name: "Kanał 3 • event obrotu w lewo (relaxed)"
+          selector:
+            entity:
+              domain: event
+
+        scroll_right_event_ch3:
+          name: "Kanał 3 • event obrotu w prawo (relaxed)"
+          selector:
+            entity:
+              domain: event
+
+        scroll_left_sensor_ch3:
+          name: "Kanał 3 • sensor obrotu w lewo (instant)"
+          selector:
+            entity:
+              domain: sensor
+
+        scroll_right_sensor_ch3:
+          name: "Kanał 3 • sensor obrotu w prawo (instant)"
+          selector:
+            entity:
+              domain: sensor
+
+        target_entity_ch3:
+          name: "Kanał 3 • sterowana encja"
+          selector:
+            entity:
+              filter:
+                - domain: light
+                - domain: media_player
+
+        scroll_wheel_mode_ch3:
+          name: "Kanał 3 • tryb pokrętła"
+          default: "lights: dim"
+          selector:
+            select:
+              options:
+                - "lights: dim"
+                - "lights: color temp and color hue"
+                - "lights: color temp only"
+                - "lights: color hue only"
+                - "media: volume control"
+                - "user defined"
+
+        scroll_wheel_mode_ext_ch3:
+          name: "Kanał 3 • tryb odczytu pokrętła"
+          default: "relaxed"
+          selector:
+            select:
+              options:
+                - "relaxed"
+                - "instant"
+
+        click_behavior_ch3:
+          name: "Kanał 3 • zachowanie pojedynczego kliku"
+          default: "default"
+          selector:
+            select:
+              options:
+                - label: "Domyślne"
+                  value: "default"
+                - label: "Domyślne + własna akcja"
+                  value: "append"
+                - label: "Tylko własna akcja"
+                  value: "override"
+
+        click_action_ch3:
+          name: "Kanał 3 • akcja pojedynczego kliku"
+          default: []
+          selector:
+            action:
+
+        double_click_action_ch3:
+          name: "Kanał 3 • akcja podwójnego kliku"
+          default: []
+          selector:
+            action:
+
+        triple_click_action_ch3:
+          name: "Kanał 3 • akcja potrójnego kliku"
+          default: []
+          selector:
+            action:
+
+        long_click_action_ch3:
+          name: "Kanał 3 • akcja na start przytrzymania"
+          default: []
+          selector:
+            action:
+
+        on_hold_action_ch3:
+          name: "Kanał 3 • akcja powtarzana podczas przytrzymania"
+          default: []
+          selector:
+            action:
+
+        scroll_wheel_user_action_ch3:
+          name: "Kanał 3 • własna akcja obrotu"
+          default: []
+          selector:
+            action:
+
+    light_settings:
+      name: "💡 Ustawienia świateł"
+      icon: mdi:lightbulb-group
+      collapsed: true
+      input:
+        dim_step_pct:
+          name: "Krok jasności (%)"
+          default: 10
+          selector:
+            number:
+              min: 1
+              max: 100
+              step: 1
+              unit_of_measurement: "%"
+              mode: box
+
+        dim_min_pct:
+          name: "Minimalna jasność (%)"
+          default: 5
+          selector:
+            number:
+              min: 1
+              max: 100
+              step: 1
+              unit_of_measurement: "%"
+              mode: box
+
+        dim_turns_lights_on:
+          name: "Obrót w prawo może włączyć zgaszone światło"
+          default: true
+          selector:
+            boolean:
+
+        min_color_temp_kelvin:
+          name: "Minimalna temperatura barwowa (K)"
+          default: 2200
+          selector:
+            number:
+              min: 1500
+              max: 6500
+              step: 50
+              unit_of_measurement: "K"
+              mode: box
+
+        max_color_temp_kelvin:
+          name: "Maksymalna temperatura barwowa (K)"
+          default: 4000
+          selector:
+            number:
+              min: 1500
+              max: 6500
+              step: 50
+              unit_of_measurement: "K"
+              mode: box
+
+        color_temp_step_kelvin:
+          name: "Krok temperatury barwowej (K)"
+          default: 100
+          selector:
+            number:
+              min: 10
+              max: 1000
+              step: 10
+              unit_of_measurement: "K"
+              mode: box
+
+        color_hue_step:
+          name: "Krok zmiany koloru (stopnie)"
+          default: 12
+          selector:
+            number:
+              min: 1
+              max: 180
+              step: 1
+              unit_of_measurement: "°"
+              mode: box
+
+        color_saturation:
+          name: "Nasycenie koloru (%)"
+          default: 100
+          selector:
+            number:
+              min: 1
+              max: 100
+              step: 1
+              unit_of_measurement: "%"
+              mode: box
+
+        light_transition_duration:
+          name: "Czas przejścia światła (s)"
+          default: 0.3
+          selector:
+            number:
+              min: 0
+              max: 10
+              step: 0.1
+              unit_of_measurement: "s"
+              mode: box
+
+    media_settings:
+      name: "🎵 Ustawienia odtwarzacza"
+      icon: mdi:music-circle
+      collapsed: true
+      input:
+        volume_step_pct:
+          name: "Krok głośności (%)"
+          default: 5
+          selector:
+            number:
+              min: 1
+              max: 100
+              step: 0.5
+              unit_of_measurement: "%"
+              mode: box
+
+        volume_max_pct:
+          name: "Maksymalna głośność (%)"
+          default: 70
+          selector:
+            number:
+              min: 1
+              max: 100
+              step: 1
+              unit_of_measurement: "%"
+              mode: box
+
+        volume_use_up_down_for_instant:
+          name: "Dla instant używaj volume_up / volume_down"
+          default: true
+          selector:
+            boolean:
+
+    advanced_section:
+      name: "🔧 Zaawansowane"
+      icon: mdi:cog
+      collapsed: true
+      input:
+        on_hold_delay:
+          name: "Opóźnienie między akcjami on-hold (s)"
+          default: 0.1
+          selector:
+            number:
+              min: 0.05
+              max: 2
+              step: 0.05
+              unit_of_measurement: "s"
+              mode: box
+
+        reverse_scroll_direction:
+          name: "Odwróć kierunek obrotu"
+          default: false
+          selector:
+            boolean:
+
+        max_queued_automation_calls:
+          name: "Maksymalna kolejka wywołań"
+          default: 20
+          selector:
+            number:
+              min: 1
+              max: 100
+              step: 1
+              mode: box
+
+        enable_logging:
+          name: "Włącz logbook debug"
+          default: false
+          selector:
+            boolean:
+
+        blocking_condition:
+          name: "Globalny warunek blokujący"
+          default: []
+          selector:
+            condition:
+
+alias: IKEA Bilresa Matter Controller
+description: ""
+
+trigger:
+  - trigger: event
+    event_type: state_changed
+    event_data:
+      entity_id: !input button_event_ch1
+    id: button_ch1
+
+  - trigger: event
+    event_type: state_changed
+    event_data:
+      entity_id: !input scroll_left_event_ch1
+    id: scroll_left_ch1
+
+  - trigger: event
+    event_type: state_changed
+    event_data:
+      entity_id: !input scroll_right_event_ch1
+    id: scroll_right_ch1
+
+  - trigger: event
+    event_type: state_changed
+    event_data:
+      entity_id: !input scroll_left_sensor_ch1
+    id: scroll_left_ext_ch1
+
+  - trigger: event
+    event_type: state_changed
+    event_data:
+      entity_id: !input scroll_right_sensor_ch1
+    id: scroll_right_ext_ch1
+
+  - trigger: event
+    event_type: state_changed
+    event_data:
+      entity_id: !input button_event_ch2
+    id: button_ch2
+
+  - trigger: event
+    event_type: state_changed
+    event_data:
+      entity_id: !input scroll_left_event_ch2
+    id: scroll_left_ch2
+
+  - trigger: event
+    event_type: state_changed
+    event_data:
+      entity_id: !input scroll_right_event_ch2
+    id: scroll_right_ch2
+
+  - trigger: event
+    event_type: state_changed
+    event_data:
+      entity_id: !input scroll_left_sensor_ch2
+    id: scroll_left_ext_ch2
+
+  - trigger: event
+    event_type: state_changed
+    event_data:
+      entity_id: !input scroll_right_sensor_ch2
+    id: scroll_right_ext_ch2
+
+  - trigger: event
+    event_type: state_changed
+    event_data:
+      entity_id: !input button_event_ch3
+    id: button_ch3
+
+  - trigger: event
+    event_type: state_changed
+    event_data:
+      entity_id: !input scroll_left_event_ch3
+    id: scroll_left_ch3
+
+  - trigger: event
+    event_type: state_changed
+    event_data:
+      entity_id: !input scroll_right_event_ch3
+    id: scroll_right_ch3
+
+  - trigger: event
+    event_type: state_changed
+    event_data:
+      entity_id: !input scroll_left_sensor_ch3
+    id: scroll_left_ext_ch3
+
+  - trigger: event
+    event_type: state_changed
+    event_data:
+      entity_id: !input scroll_right_sensor_ch3
+    id: scroll_right_ext_ch3
+
+condition:
+  - condition: template
+    value_template: >
+      {{
+        trigger.event.data.old_state is not none
+        and trigger.event.data.new_state is not none
+        and trigger.event.data.old_state.state != 'unavailable'
+        and trigger.event.data.new_state.state != 'unavailable'
+      }}
+  - !input blocking_condition
+
+mode: queued
+max: !input max_queued_automation_calls
+max_exceeded: silent
+
+action:
+  - variables:
+      channels:
+        ch1:
+          button: !input button_event_ch1
+          scroll_left: !input scroll_left_event_ch1
+          scroll_right: !input scroll_right_event_ch1
+          scroll_left_ext: !input scroll_left_sensor_ch1
+          scroll_right_ext: !input scroll_right_sensor_ch1
+          target: !input target_entity_ch1
+          scroll_mode: !input scroll_wheel_mode_ch1
+          eval_mode: !input scroll_wheel_mode_ext_ch1
+          click_behavior: !input click_behavior_ch1
+        ch2:
+          button: !input button_event_ch2
+          scroll_left: !input scroll_left_event_ch2
+          scroll_right: !input scroll_right_event_ch2
+          scroll_left_ext: !input scroll_left_sensor_ch2
+          scroll_right_ext: !input scroll_right_sensor_ch2
+          target: !input target_entity_ch2
+          scroll_mode: !input scroll_wheel_mode_ch2
+          eval_mode: !input scroll_wheel_mode_ext_ch2
+          click_behavior: !input click_behavior_ch2
+        ch3:
+          button: !input button_event_ch3
+          scroll_left: !input scroll_left_event_ch3
+          scroll_right: !input scroll_right_event_ch3
+          scroll_left_ext: !input scroll_left_sensor_ch3
+          scroll_right_ext: !input scroll_right_sensor_ch3
+          target: !input target_entity_ch3
+          scroll_mode: !input scroll_wheel_mode_ch3
+          eval_mode: !input scroll_wheel_mode_ext_ch3
+          click_behavior: !input click_behavior_ch3
+
+      v_dim_step_pct: !input dim_step_pct
+      v_dim_min_pct: !input dim_min_pct
+      v_dim_turns_lights_on: !input dim_turns_lights_on
+      v_min_color_temp_kelvin: !input min_color_temp_kelvin
+      v_max_color_temp_kelvin: !input max_color_temp_kelvin
+      v_color_temp_step_kelvin: !input color_temp_step_kelvin
+      v_color_hue_step: !input color_hue_step
+      v_color_saturation: !input color_saturation
+      v_light_transition_duration: !input light_transition_duration
+      v_volume_step_pct: !input volume_step_pct
+      v_volume_max_pct: !input volume_max_pct
+      v_volume_use_up_down_for_instant: !input volume_use_up_down_for_instant
+      v_on_hold_delay: !input on_hold_delay
+      v_reverse_scroll_direction: !input reverse_scroll_direction
+      v_enable_logging: !input enable_logging
+
+      channel: >
+        {% if trigger.id.endswith('_ch1') %}
+          ch1
+        {% elif trigger.id.endswith('_ch2') %}
+          ch2
+        {% else %}
+          ch3
+        {% endif %}
+
+      event_type: "{{ trigger.event.data.new_state.attributes.event_type if trigger.event.data.new_state.attributes is defined and trigger.event.data.new_state.attributes.event_type is defined else '' }}"
+      new_state_value: "{{ trigger.event.data.new_state.state }}"
+      scroll_clicks: >
+        {% if trigger.id.startswith('scroll_') and channels[channel].eval_mode == 'relaxed' %}
+          {{ trigger.event.data.new_state.attributes.totalNumberOfPressesCounted if trigger.event.data.new_state.attributes is defined and trigger.event.data.new_state.attributes.totalNumberOfPressesCounted is defined else 1 }}
+        {% else %}
+          1
+        {% endif %}
+      scroll_direction: >
+        {% set left_ids = ['scroll_left_' ~ channel, 'scroll_left_ext_' ~ channel] %}
+        {% set direction = 'left' if trigger.id in left_ids else 'right' %}
+        {% if v_reverse_scroll_direction %}
+          {{ 'right' if direction == 'left' else 'left' }}
+        {% else %}
+          {{ direction }}
+        {% endif %}
+      target_entity: "{{ channels[channel].target }}"
+      target_domain: "{{ (channels[channel].target.split('.')[0]) if '.' in channels[channel].target else '' }}"
+      scroll_mode: "{{ channels[channel].scroll_mode }}"
+      relaxed_scroll_trigger: "{{ trigger.id in ['scroll_left_' ~ channel, 'scroll_right_' ~ channel] }}"
+      instant_scroll_trigger: "{{ trigger.id in ['scroll_left_ext_' ~ channel, 'scroll_right_ext_' ~ channel] and new_state_value == '1' }}"
+      should_handle_scroll: >
+        {{
+          (channels[channel].eval_mode == 'relaxed' and relaxed_scroll_trigger)
+          or
+          (channels[channel].eval_mode == 'instant' and instant_scroll_trigger)
+        }}
+      current_brightness_pct: >
+        {% set bri = state_attr(target_entity, 'brightness') %}
+        {% if bri is none %}
+          {{ v_dim_min_pct | float(0) }}
+        {% else %}
+          {{ ((bri | float(0)) * 100 / 254) | round(0) }}
+        {% endif %}
+      brightness_delta_pct: "{{ (scroll_clicks | float(1)) * (v_dim_step_pct | float(0)) * (1 if scroll_direction == 'right' else -1) }}"
+      next_brightness_pct: >
+        {% set raw = (current_brightness_pct | float(0)) + (brightness_delta_pct | float(0)) %}
+        {% set limited = [100, [raw, v_dim_min_pct | float(0)] | max] | min %}
+        {{ limited | round(0) }}
+      current_color_temp_kelvin: >
+        {% set current = state_attr(target_entity, 'color_temp_kelvin') %}
+        {% if current is none %}
+          {{ ((v_min_color_temp_kelvin | int(2200)) + (v_max_color_temp_kelvin | int(4000))) / 2 }}
+        {% else %}
+          {{ current | int(0) }}
+        {% endif %}
+      next_color_temp_kelvin: >
+        {% set step = (scroll_clicks | int(1)) * (v_color_temp_step_kelvin | int(100)) * (1 if scroll_direction == 'right' else -1) %}
+        {% set raw = (current_color_temp_kelvin | int(0)) + step %}
+        {% set clamped = [v_max_color_temp_kelvin | int(4000), [raw, v_min_color_temp_kelvin | int(2200)] | max] | min %}
+        {{ clamped }}
+      current_hue: >
+        {% set hs = state_attr(target_entity, 'hs_color') %}
+        {% if hs is not none and hs | count > 0 %}
+          {{ hs[0] | float(0) }}
+        {% else %}
+          0
+        {% endif %}
+      next_hue: >
+        {% set delta = (scroll_clicks | float(1)) * (v_color_hue_step | float(0)) * (1 if scroll_direction == 'right' else -1) %}
+        {{ ((current_hue | float(0)) + delta) % 360 }}
+      current_volume_pct: >
+        {% set level = state_attr(target_entity, 'volume_level') %}
+        {% if level is none %}
+          0
+        {% else %}
+          {{ (level | float(0)) * 100 }}
+        {% endif %}
+      next_volume_level: >
+        {% set raw = (current_volume_pct | float(0)) + ((scroll_clicks | float(1)) * (v_volume_step_pct | float(0)) * (1 if scroll_direction == 'right' else -1)) %}
+        {% set clamped = [v_volume_max_pct | float(70), [raw, 0] | max] | min %}
+        {{ (clamped / 100) | round(3) }}
+
+  - if: "{{ v_enable_logging }}"
+    then:
+      - action: logbook.log
+        data:
+          name: "🎛️ Bilresa Matter"
+          message: >
+            Trigger={{ trigger.id }} | channel={{ channel }} | event_type={{ event_type }} |
+            scroll={{ scroll_direction }} x{{ scroll_clicks }} |
+            target={{ target_entity }} | mode={{ scroll_mode }}
+
+  - choose:
+      - conditions:
+          - "{{ trigger.id == 'button_' ~ channel and event_type == 'multi_press_1' }}"
+        sequence:
+          - choose:
+              - conditions:
+                  - "{{ channel == 'ch1' and channels[channel].click_behavior == 'override' }}"
+                sequence: !input click_action_ch1
+              - conditions:
+                  - "{{ channel == 'ch2' and channels[channel].click_behavior == 'override' }}"
+                sequence: !input click_action_ch2
+              - conditions:
+                  - "{{ channel == 'ch3' and channels[channel].click_behavior == 'override' }}"
+                sequence: !input click_action_ch3
+            default:
+              - choose:
+                  - conditions:
+                      - "{{ target_domain == 'light' }}"
+                    sequence:
+                      - action: light.toggle
+                        target:
+                          entity_id: "{{ target_entity }}"
+                  - conditions:
+                      - "{{ target_domain == 'media_player' }}"
+                    sequence:
+                      - action: media_player.media_play_pause
+                        target:
+                          entity_id: "{{ target_entity }}"
+              - choose:
+                  - conditions:
+                      - "{{ channel == 'ch1' and channels[channel].click_behavior == 'append' }}"
+                    sequence: !input click_action_ch1
+                  - conditions:
+                      - "{{ channel == 'ch2' and channels[channel].click_behavior == 'append' }}"
+                    sequence: !input click_action_ch2
+                  - conditions:
+                      - "{{ channel == 'ch3' and channels[channel].click_behavior == 'append' }}"
+                    sequence: !input click_action_ch3
+
+      - conditions:
+          - "{{ trigger.id == 'button_' ~ channel and event_type == 'multi_press_2' }}"
+        sequence:
+          - choose:
+              - conditions:
+                  - "{{ channel == 'ch1' }}"
+                sequence: !input double_click_action_ch1
+              - conditions:
+                  - "{{ channel == 'ch2' }}"
+                sequence: !input double_click_action_ch2
+              - conditions:
+                  - "{{ channel == 'ch3' }}"
+                sequence: !input double_click_action_ch3
+
+      - conditions:
+          - "{{ trigger.id == 'button_' ~ channel and event_type == 'multi_press_3' }}"
+        sequence:
+          - choose:
+              - conditions:
+                  - "{{ channel == 'ch1' }}"
+                sequence: !input triple_click_action_ch1
+              - conditions:
+                  - "{{ channel == 'ch2' }}"
+                sequence: !input triple_click_action_ch2
+              - conditions:
+                  - "{{ channel == 'ch3' }}"
+                sequence: !input triple_click_action_ch3
+
+      - conditions:
+          - "{{ trigger.id == 'button_' ~ channel and event_type == 'long_press' }}"
+        sequence:
+          - choose:
+              - conditions:
+                  - "{{ channel == 'ch1' }}"
+                sequence:
+                  - sequence: !input long_click_action_ch1
+                  - repeat:
+                      while: "{{ repeat.index < 200 and state_attr(channels[channel].button, 'event_type') == 'long_press' }}"
+                      sequence:
+                        - sequence: !input on_hold_action_ch1
+                        - delay:
+                            seconds: "{{ v_on_hold_delay | float(0.1) }}"
+              - conditions:
+                  - "{{ channel == 'ch2' }}"
+                sequence:
+                  - sequence: !input long_click_action_ch2
+                  - repeat:
+                      while: "{{ repeat.index < 200 and state_attr(channels[channel].button, 'event_type') == 'long_press' }}"
+                      sequence:
+                        - sequence: !input on_hold_action_ch2
+                        - delay:
+                            seconds: "{{ v_on_hold_delay | float(0.1) }}"
+              - conditions:
+                  - "{{ channel == 'ch3' }}"
+                sequence:
+                  - sequence: !input long_click_action_ch3
+                  - repeat:
+                      while: "{{ repeat.index < 200 and state_attr(channels[channel].button, 'event_type') == 'long_press' }}"
+                      sequence:
+                        - sequence: !input on_hold_action_ch3
+                        - delay:
+                            seconds: "{{ v_on_hold_delay | float(0.1) }}"
+
+      - conditions:
+          - "{{ should_handle_scroll }}"
+        sequence:
+          - choose:
+              - conditions:
+                  - "{{ scroll_mode == 'user defined' }}"
+                sequence:
+                  - choose:
+                      - conditions:
+                          - "{{ channel == 'ch1' }}"
+                        sequence: !input scroll_wheel_user_action_ch1
+                      - conditions:
+                          - "{{ channel == 'ch2' }}"
+                        sequence: !input scroll_wheel_user_action_ch2
+                      - conditions:
+                          - "{{ channel == 'ch3' }}"
+                        sequence: !input scroll_wheel_user_action_ch3
+
+              - conditions:
+                  - "{{ scroll_mode == 'lights: dim' and target_domain == 'light' }}"
+                sequence:
+                  - choose:
+                      - conditions:
+                          - "{{ is_state(target_entity, 'on') }}"
+                        sequence:
+                          - action: light.turn_on
+                            target:
+                              entity_id: "{{ target_entity }}"
+                            data:
+                              brightness_pct: "{{ next_brightness_pct | int(v_dim_min_pct) }}"
+                              transition: "{{ v_light_transition_duration | float(0) }}"
+                      - conditions:
+                          - "{{ not is_state(target_entity, 'on') and v_dim_turns_lights_on and scroll_direction == 'right' }}"
+                        sequence:
+                          - action: light.turn_on
+                            target:
+                              entity_id: "{{ target_entity }}"
+                            data:
+                              brightness_pct: "{{ [next_brightness_pct | int(v_dim_min_pct), v_dim_min_pct | int(5)] | max }}"
+                              transition: "{{ v_light_transition_duration | float(0) }}"
+
+              - conditions:
+                  - "{{ (scroll_mode == 'lights: color temp only' or (scroll_mode == 'lights: color temp and color hue' and state_attr(target_entity, 'color_temp_kelvin') is not none)) and target_domain == 'light' }}"
+                sequence:
+                  - action: light.turn_on
+                    target:
+                      entity_id: "{{ target_entity }}"
+                    data:
+                      color_temp_kelvin: "{{ next_color_temp_kelvin | int(v_min_color_temp_kelvin) }}"
+                      transition: "{{ v_light_transition_duration | float(0) }}"
+
+              - conditions:
+                  - "{{ (scroll_mode == 'lights: color hue only' or (scroll_mode == 'lights: color temp and color hue' and state_attr(target_entity, 'color_temp_kelvin') is none)) and target_domain == 'light' }}"
+                sequence:
+                  - action: light.turn_on
+                    target:
+                      entity_id: "{{ target_entity }}"
+                    data:
+                      hs_color:
+                        - "{{ next_hue | float(0) }}"
+                        - "{{ v_color_saturation | float(100) }}"
+                      transition: "{{ v_light_transition_duration | float(0) }}"
+
+              - conditions:
+                  - "{{ scroll_mode == 'media: volume control' and target_domain == 'media_player' }}"
+                sequence:
+                  - choose:
+                      - conditions:
+                          - "{{ channels[channel].eval_mode == 'relaxed' or not v_volume_use_up_down_for_instant }}"
+                        sequence:
+                          - action: media_player.volume_set
+                            target:
+                              entity_id: "{{ target_entity }}"
+                            data:
+                              volume_level: "{{ next_volume_level | float(0) }}"
+                    default:
+                      - choose:
+                          - conditions:
+                              - "{{ scroll_direction == 'left' }}"
+                            sequence:
+                              - action: media_player.volume_down
+                                target:
+                                  entity_id: "{{ target_entity }}"
+                          - conditions:
+                              - "{{ scroll_direction == 'right' and (current_volume_pct | float(0)) < (v_volume_max_pct | float(70)) }}"
+                            sequence:
+                              - action: media_player.volume_up
+                                target:
+                                  entity_id: "{{ target_entity }}"
