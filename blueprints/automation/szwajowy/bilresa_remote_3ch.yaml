@@ -13,484 +13,483 @@ blueprint:
     Version: 1.0.0 (2026-06-13)
     Author: Generated blueprint
   domain: automation
+  input:
+    # ============================================================================
+    # INPUT SELECTORS
+    # ============================================================================
 
-# ============================================================================
-# INPUT SELECTORS
-# ============================================================================
+    # ========== REMOTE SETUP ==========
+    remote_device:
+      name: Remote Device
+      description: |
+        Select your IKEA Bilresa remote connected via Matter.
+        The blueprint will auto-detect event and sensor entities by numeric suffix (1, 2, 3).
+      selector:
+        device:
+          filter:
+            manufacturer: IKEA of Sweden
+            model: BILRESA scroll wheel
+            integration: matter
 
-input:
-  # ========== REMOTE SETUP ==========
-  remote_device:
-    name: Remote Device
-    description: |
-      Select your IKEA Bilresa remote connected via Matter.
-      The blueprint will auto-detect event and sensor entities by numeric suffix (1, 2, 3).
-    selector:
-      device:
-        filter:
-          manufacturer: IKEA of Sweden
-          model: BILRESA scroll wheel
-          integration: matter
+    # ========== CHANNEL 1 ==========
+    channel1_section:
+      name: "⚙️ Channel 1"
+      collapsed: true
+      input:
+        channel1_target:
+          name: "Channel 1: Target Entity"
+          description: "Select a light or media player to control on this channel"
+          selector:
+            entity:
+              filter:
+                domain:
+                  - light
+                  - media_player
+          default: ""
 
-  # ========== CHANNEL 1 ==========
-  channel1_section:
-    name: "⚙️ Channel 1"
-    collapsed: true
-    input:
-      channel1_target:
-        name: "Channel 1: Target Entity"
-        description: "Select a light or media player to control on this channel"
-        selector:
-          entity:
-            filter:
-              domain:
-                - light
-                - media_player
-        default: ""
+        channel1_scroll_mode:
+          name: "Channel 1: Scroll Wheel Mode"
+          description: "Select what the knob rotation controls"
+          selector:
+            select:
+              options:
+                - "lights: brightness"
+                - "lights: color temperature"
+                - "lights: color hue"
+                - "media: volume"
+                - "custom action"
+          default: "lights: brightness"
 
-      channel1_scroll_mode:
-        name: "Channel 1: Scroll Wheel Mode"
-        description: "Select what the knob rotation controls"
-        selector:
-          select:
-            options:
-              - "lights: brightness"
-              - "lights: color temperature"
-              - "lights: color hue"
-              - "media: volume"
-              - "custom action"
-        default: "lights: brightness"
+        channel1_scroll_mode_instant:
+          name: "Channel 1: Instant Mode"
+          description: |
+            - ON: Continuous feedback on every rotation (smoother, more responsive)
+            - OFF: Single action after rotation completes (relaxed, less load)
+          selector:
+            boolean:
+          default: true
 
-      channel1_scroll_mode_instant:
-        name: "Channel 1: Instant Mode"
-        description: |
-          - ON: Continuous feedback on every rotation (smoother, more responsive)
-          - OFF: Single action after rotation completes (relaxed, less load)
-        selector:
-          boolean:
-        default: true
+        channel1_click_action:
+          name: "Channel 1: Single Click Action"
+          description: "Define what happens on a single button press"
+          selector:
+            action:
+          default: []
 
-      channel1_click_action:
-        name: "Channel 1: Single Click Action"
-        description: "Define what happens on a single button press"
-        selector:
-          action:
-        default: []
+        channel1_double_click_action:
+          name: "Channel 1: Double-Click Action"
+          description: "Define what happens on double-click"
+          selector:
+            action:
+          default: []
 
-      channel1_double_click_action:
-        name: "Channel 1: Double-Click Action"
-        description: "Define what happens on double-click"
-        selector:
-          action:
-        default: []
+        channel1_triple_click_action:
+          name: "Channel 1: Triple-Click Action"
+          description: "Define what happens on triple-click"
+          selector:
+            action:
+          default: []
 
-      channel1_triple_click_action:
-        name: "Channel 1: Triple-Click Action"
-        description: "Define what happens on triple-click"
-        selector:
-          action:
-        default: []
+        channel1_long_press_action:
+          name: "Channel 1: Long-Press Action"
+          description: "Action triggered when button is held down initially"
+          selector:
+            action:
+          default: []
 
-      channel1_long_press_action:
-        name: "Channel 1: Long-Press Action"
-        description: "Action triggered when button is held down initially"
-        selector:
-          action:
-        default: []
+        channel1_hold_action:
+          name: "Channel 1: Hold/Repeat Action"
+          description: "Action repeated while button is held (with delay between repeats)"
+          selector:
+            action:
+          default: []
 
-      channel1_hold_action:
-        name: "Channel 1: Hold/Repeat Action"
-        description: "Action repeated while button is held (with delay between repeats)"
-        selector:
-          action:
-        default: []
+        channel1_scroll_custom_action:
+          name: "Channel 1: Custom Scroll Action"
+          description: |
+            Define custom scroll wheel behavior (only used if scroll mode is "custom action").
+            Variables available:
+            - scroll_direction: 'left' or 'right'
+            - scroll_clicks: number of rotation steps (1 in instant mode, 1-8 in relaxed mode)
+          selector:
+            action:
+          default: []
 
-      channel1_scroll_custom_action:
-        name: "Channel 1: Custom Scroll Action"
-        description: |
-          Define custom scroll wheel behavior (only used if scroll mode is "custom action").
-          Variables available:
-          - scroll_direction: 'left' or 'right'
-          - scroll_clicks: number of rotation steps (1 in instant mode, 1-8 in relaxed mode)
-        selector:
-          action:
-        default: []
+    # ========== CHANNEL 2 ==========
+    channel2_section:
+      name: "⚙️ Channel 2"
+      collapsed: true
+      input:
+        channel2_target:
+          name: "Channel 2: Target Entity"
+          description: "Select a light or media player to control on this channel"
+          selector:
+            entity:
+              filter:
+                domain:
+                  - light
+                  - media_player
+          default: ""
 
-  # ========== CHANNEL 2 ==========
-  channel2_section:
-    name: "⚙️ Channel 2"
-    collapsed: true
-    input:
-      channel2_target:
-        name: "Channel 2: Target Entity"
-        description: "Select a light or media player to control on this channel"
-        selector:
-          entity:
-            filter:
-              domain:
-                - light
-                - media_player
-        default: ""
+        channel2_scroll_mode:
+          name: "Channel 2: Scroll Wheel Mode"
+          description: "Select what the knob rotation controls"
+          selector:
+            select:
+              options:
+                - "lights: brightness"
+                - "lights: color temperature"
+                - "lights: color hue"
+                - "media: volume"
+                - "custom action"
+          default: "lights: brightness"
 
-      channel2_scroll_mode:
-        name: "Channel 2: Scroll Wheel Mode"
-        description: "Select what the knob rotation controls"
-        selector:
-          select:
-            options:
-              - "lights: brightness"
-              - "lights: color temperature"
-              - "lights: color hue"
-              - "media: volume"
-              - "custom action"
-        default: "lights: brightness"
+        channel2_scroll_mode_instant:
+          name: "Channel 2: Instant Mode"
+          description: |
+            - ON: Continuous feedback on every rotation (smoother, more responsive)
+            - OFF: Single action after rotation completes (relaxed, less load)
+          selector:
+            boolean:
+          default: true
 
-      channel2_scroll_mode_instant:
-        name: "Channel 2: Instant Mode"
-        description: |
-          - ON: Continuous feedback on every rotation (smoother, more responsive)
-          - OFF: Single action after rotation completes (relaxed, less load)
-        selector:
-          boolean:
-        default: true
+        channel2_click_action:
+          name: "Channel 2: Single Click Action"
+          description: "Define what happens on a single button press"
+          selector:
+            action:
+          default: []
 
-      channel2_click_action:
-        name: "Channel 2: Single Click Action"
-        description: "Define what happens on a single button press"
-        selector:
-          action:
-        default: []
+        channel2_double_click_action:
+          name: "Channel 2: Double-Click Action"
+          description: "Define what happens on double-click"
+          selector:
+            action:
+          default: []
 
-      channel2_double_click_action:
-        name: "Channel 2: Double-Click Action"
-        description: "Define what happens on double-click"
-        selector:
-          action:
-        default: []
+        channel2_triple_click_action:
+          name: "Channel 2: Triple-Click Action"
+          description: "Define what happens on triple-click"
+          selector:
+            action:
+          default: []
 
-      channel2_triple_click_action:
-        name: "Channel 2: Triple-Click Action"
-        description: "Define what happens on triple-click"
-        selector:
-          action:
-        default: []
+        channel2_long_press_action:
+          name: "Channel 2: Long-Press Action"
+          description: "Action triggered when button is held down initially"
+          selector:
+            action:
+          default: []
 
-      channel2_long_press_action:
-        name: "Channel 2: Long-Press Action"
-        description: "Action triggered when button is held down initially"
-        selector:
-          action:
-        default: []
+        channel2_hold_action:
+          name: "Channel 2: Hold/Repeat Action"
+          description: "Action repeated while button is held (with delay between repeats)"
+          selector:
+            action:
+          default: []
 
-      channel2_hold_action:
-        name: "Channel 2: Hold/Repeat Action"
-        description: "Action repeated while button is held (with delay between repeats)"
-        selector:
-          action:
-        default: []
+        channel2_scroll_custom_action:
+          name: "Channel 2: Custom Scroll Action"
+          description: |
+            Define custom scroll wheel behavior (only used if scroll mode is "custom action").
+            Variables available:
+            - scroll_direction: 'left' or 'right'
+            - scroll_clicks: number of rotation steps (1 in instant mode, 1-8 in relaxed mode)
+          selector:
+            action:
+          default: []
 
-      channel2_scroll_custom_action:
-        name: "Channel 2: Custom Scroll Action"
-        description: |
-          Define custom scroll wheel behavior (only used if scroll mode is "custom action").
-          Variables available:
-          - scroll_direction: 'left' or 'right'
-          - scroll_clicks: number of rotation steps (1 in instant mode, 1-8 in relaxed mode)
-        selector:
-          action:
-        default: []
+    # ========== CHANNEL 3 ==========
+    channel3_section:
+      name: "⚙️ Channel 3"
+      collapsed: true
+      input:
+        channel3_target:
+          name: "Channel 3: Target Entity"
+          description: "Select a light or media player to control on this channel"
+          selector:
+            entity:
+              filter:
+                domain:
+                  - light
+                  - media_player
+          default: ""
 
-  # ========== CHANNEL 3 ==========
-  channel3_section:
-    name: "⚙️ Channel 3"
-    collapsed: true
-    input:
-      channel3_target:
-        name: "Channel 3: Target Entity"
-        description: "Select a light or media player to control on this channel"
-        selector:
-          entity:
-            filter:
-              domain:
-                - light
-                - media_player
-        default: ""
+        channel3_scroll_mode:
+          name: "Channel 3: Scroll Wheel Mode"
+          description: "Select what the knob rotation controls"
+          selector:
+            select:
+              options:
+                - "lights: brightness"
+                - "lights: color temperature"
+                - "lights: color hue"
+                - "media: volume"
+                - "custom action"
+          default: "lights: brightness"
 
-      channel3_scroll_mode:
-        name: "Channel 3: Scroll Wheel Mode"
-        description: "Select what the knob rotation controls"
-        selector:
-          select:
-            options:
-              - "lights: brightness"
-              - "lights: color temperature"
-              - "lights: color hue"
-              - "media: volume"
-              - "custom action"
-        default: "lights: brightness"
+        channel3_scroll_mode_instant:
+          name: "Channel 3: Instant Mode"
+          description: |
+            - ON: Continuous feedback on every rotation (smoother, more responsive)
+            - OFF: Single action after rotation completes (relaxed, less load)
+          selector:
+            boolean:
+          default: true
 
-      channel3_scroll_mode_instant:
-        name: "Channel 3: Instant Mode"
-        description: |
-          - ON: Continuous feedback on every rotation (smoother, more responsive)
-          - OFF: Single action after rotation completes (relaxed, less load)
-        selector:
-          boolean:
-        default: true
+        channel3_click_action:
+          name: "Channel 3: Single Click Action"
+          description: "Define what happens on a single button press"
+          selector:
+            action:
+          default: []
 
-      channel3_click_action:
-        name: "Channel 3: Single Click Action"
-        description: "Define what happens on a single button press"
-        selector:
-          action:
-        default: []
+        channel3_double_click_action:
+          name: "Channel 3: Double-Click Action"
+          description: "Define what happens on double-click"
+          selector:
+            action:
+          default: []
 
-      channel3_double_click_action:
-        name: "Channel 3: Double-Click Action"
-        description: "Define what happens on double-click"
-        selector:
-          action:
-        default: []
+        channel3_triple_click_action:
+          name: "Channel 3: Triple-Click Action"
+          description: "Define what happens on triple-click"
+          selector:
+            action:
+          default: []
 
-      channel3_triple_click_action:
-        name: "Channel 3: Triple-Click Action"
-        description: "Define what happens on triple-click"
-        selector:
-          action:
-        default: []
+        channel3_long_press_action:
+          name: "Channel 3: Long-Press Action"
+          description: "Action triggered when button is held down initially"
+          selector:
+            action:
+          default: []
 
-      channel3_long_press_action:
-        name: "Channel 3: Long-Press Action"
-        description: "Action triggered when button is held down initially"
-        selector:
-          action:
-        default: []
+        channel3_hold_action:
+          name: "Channel 3: Hold/Repeat Action"
+          description: "Action repeated while button is held (with delay between repeats)"
+          selector:
+            action:
+          default: []
 
-      channel3_hold_action:
-        name: "Channel 3: Hold/Repeat Action"
-        description: "Action repeated while button is held (with delay between repeats)"
-        selector:
-          action:
-        default: []
+        channel3_scroll_custom_action:
+          name: "Channel 3: Custom Scroll Action"
+          description: |
+            Define custom scroll wheel behavior (only used if scroll mode is "custom action").
+            Variables available:
+            - scroll_direction: 'left' or 'right'
+            - scroll_clicks: number of rotation steps (1 in instant mode, 1-8 in relaxed mode)
+          selector:
+            action:
+          default: []
 
-      channel3_scroll_custom_action:
-        name: "Channel 3: Custom Scroll Action"
-        description: |
-          Define custom scroll wheel behavior (only used if scroll mode is "custom action").
-          Variables available:
-          - scroll_direction: 'left' or 'right'
-          - scroll_clicks: number of rotation steps (1 in instant mode, 1-8 in relaxed mode)
-        selector:
-          action:
-        default: []
+    # ========== GLOBAL LIGHT SETTINGS ==========
+    global_light_settings:
+      name: "💡 Global Light Settings"
+      collapsed: true
+      input:
+        light_brightness_step_pct:
+          name: Brightness Step (%)
+          description: "Amount to change brightness per rotation step"
+          selector:
+            number:
+              min: 1
+              max: 50
+              step: 1
+          default: 10
 
-  # ========== GLOBAL LIGHT SETTINGS ==========
-  global_light_settings:
-    name: "💡 Global Light Settings"
-    collapsed: true
-    input:
-      light_brightness_step_pct:
-        name: Brightness Step (%)
-        description: "Amount to change brightness per rotation step"
-        selector:
-          number:
-            min: 1
-            max: 50
-            step: 1
-        default: 10
+        light_brightness_min_pct:
+          name: Minimum Brightness (%)
+          description: "Do not dim below this percentage"
+          selector:
+            number:
+              min: 1
+              max: 100
+              step: 1
+          default: 5
 
-      light_brightness_min_pct:
-        name: Minimum Brightness (%)
-        description: "Do not dim below this percentage"
-        selector:
-          number:
-            min: 1
-            max: 100
-            step: 1
-        default: 5
+        light_brightness_turns_on:
+          name: "Brightness Turn On Lights"
+          description: "Allow brightness control to turn off lights when dimming below minimum"
+          selector:
+            boolean:
+          default: false
 
-      light_brightness_turns_on:
-        name: "Brightness Turn On Lights"
-        description: "Allow brightness control to turn off lights when dimming below minimum"
-        selector:
-          boolean:
-        default: false
+        light_color_temp_min:
+          name: "Color Temperature Min (K)"
+          description: "Minimum color temperature in Kelvin (warmest)"
+          selector:
+            number:
+              min: 1000
+              max: 6500
+              step: 100
+          default: 2200
 
-      light_color_temp_min:
-        name: "Color Temperature Min (K)"
-        description: "Minimum color temperature in Kelvin (warmest)"
-        selector:
-          number:
-            min: 1000
-            max: 6500
-            step: 100
-        default: 2200
+        light_color_temp_max:
+          name: "Color Temperature Max (K)"
+          description: "Maximum color temperature in Kelvin (coolest)"
+          selector:
+            number:
+              min: 1000
+              max: 6500
+              step: 100
+          default: 4000
 
-      light_color_temp_max:
-        name: "Color Temperature Max (K)"
-        description: "Maximum color temperature in Kelvin (coolest)"
-        selector:
-          number:
-            min: 1000
-            max: 6500
-            step: 100
-        default: 4000
+        light_color_temp_step:
+          name: "Color Temperature Step (K)"
+          description: "Amount to change color temperature per rotation step"
+          selector:
+            number:
+              min: 10
+              max: 500
+              step: 10
+          default: 100
 
-      light_color_temp_step:
-        name: "Color Temperature Step (K)"
-        description: "Amount to change color temperature per rotation step"
-        selector:
-          number:
-            min: 10
-            max: 500
-            step: 10
-        default: 100
+        light_color_hue_step:
+          name: "Color Hue Step (°)"
+          description: "Amount to change color hue per rotation step (0-360°)"
+          selector:
+            number:
+              min: 1
+              max: 180
+              step: 1
+          default: 6
 
-      light_color_hue_step:
-        name: "Color Hue Step (°)"
-        description: "Amount to change color hue per rotation step (0-360°)"
-        selector:
-          number:
-            min: 1
-            max: 180
-            step: 1
-        default: 6
+        light_color_saturation:
+          name: "Color Saturation (%)"
+          description: "Saturation for color hue mode"
+          selector:
+            number:
+              min: 0
+              max: 100
+              step: 1
+          default: 100
 
-      light_color_saturation:
-        name: "Color Saturation (%)"
-        description: "Saturation for color hue mode"
-        selector:
-          number:
-            min: 0
-            max: 100
-            step: 1
-        default: 100
+        light_transition_duration:
+          name: "Transition Duration (s)"
+          description: "Duration of light transitions/changes"
+          selector:
+            number:
+              min: 0
+              max: 10
+              step: 0.1
+          default: 0.5
 
-      light_transition_duration:
-        name: "Transition Duration (s)"
-        description: "Duration of light transitions/changes"
-        selector:
-          number:
-            min: 0
-            max: 10
-            step: 0.1
-        default: 0.5
+    # ========== GLOBAL MEDIA SETTINGS ==========
+    global_media_settings:
+      name: "🔊 Global Media Settings"
+      collapsed: true
+      input:
+        media_volume_step_pct:
+          name: "Volume Step (%)"
+          description: "Amount to change volume per rotation step"
+          selector:
+            number:
+              min: 0.5
+              max: 10
+              step: 0.5
+          default: 3.5
 
-  # ========== GLOBAL MEDIA SETTINGS ==========
-  global_media_settings:
-    name: "🔊 Global Media Settings"
-    collapsed: true
-    input:
-      media_volume_step_pct:
-        name: "Volume Step (%)"
-        description: "Amount to change volume per rotation step"
-        selector:
-          number:
-            min: 0.5
-            max: 10
-            step: 0.5
-        default: 3.5
+        media_volume_max_pct:
+          name: "Maximum Volume (%)"
+          description: "Never increase volume above this percentage"
+          selector:
+            number:
+              min: 1
+              max: 100
+              step: 1
+          default: 70
 
-      media_volume_max_pct:
-        name: "Maximum Volume (%)"
-        description: "Never increase volume above this percentage"
-        selector:
-          number:
-            min: 1
-            max: 100
-            step: 1
-        default: 70
+        media_volume_instant_uses_actions:
+          name: "Instant Mode: Use volume_up/volume_down"
+          description: "If ON, instant mode uses media_player.volume_up/down instead of volume_set (may be smoother on some devices)"
+          selector:
+            boolean:
+          default: true
 
-      media_volume_instant_uses_actions:
-        name: "Instant Mode: Use volume_up/volume_down"
-        description: "If ON, instant mode uses media_player.volume_up/down instead of volume_set (may be smoother on some devices)"
-        selector:
-          boolean:
-        default: true
+    # ========== GLOBAL MISC SETTINGS ==========
+    global_misc_settings:
+      name: "⚙️ Global Settings"
+      collapsed: true
+      input:
+        on_hold_delay:
+          name: "Hold Repeat Delay (s)"
+          description: "Delay between repeated actions while holding a button"
+          selector:
+            number:
+              min: 0.05
+              max: 1
+              step: 0.05
+          default: 0.1
 
-  # ========== GLOBAL MISC SETTINGS ==========
-  global_misc_settings:
-    name: "⚙️ Global Settings"
-    collapsed: true
-    input:
-      on_hold_delay:
-        name: "Hold Repeat Delay (s)"
-        description: "Delay between repeated actions while holding a button"
-        selector:
-          number:
-            min: 0.05
-            max: 1
-            step: 0.05
-        default: 0.1
+        max_queued_automation_calls:
+          name: "Max Queued Calls"
+          description: "Maximum number of automation calls to queue (increase if actions are missed)"
+          selector:
+            number:
+              min: 1
+              max: 50
+              step: 1
+          default: 10
 
-      max_queued_automation_calls:
-        name: "Max Queued Calls"
-        description: "Maximum number of automation calls to queue (increase if actions are missed)"
-        selector:
-          number:
-            min: 1
-            max: 50
-            step: 1
-        default: 10
+    # ========== ADVANCED SETTINGS ==========
+    advanced_settings:
+      name: "🔧 Advanced - Manual Entity Overrides"
+      collapsed: true
+      input:
+        adv_button_ch1_entity:
+          name: "Channel 1: Button Event Entity (manual override)"
+          description: "Leave empty to auto-detect. Specify if auto-detect fails."
+          selector:
+            entity:
+              filter:
+                domain: event
+          default: ""
 
-  # ========== ADVANCED SETTINGS ==========
-  advanced_settings:
-    name: "🔧 Advanced - Manual Entity Overrides"
-    collapsed: true
-    input:
-      adv_button_ch1_entity:
-        name: "Channel 1: Button Event Entity (manual override)"
-        description: "Leave empty to auto-detect. Specify if auto-detect fails."
-        selector:
-          entity:
-            filter:
-              domain: event
-        default: ""
+        adv_button_ch2_entity:
+          name: "Channel 2: Button Event Entity (manual override)"
+          description: "Leave empty to auto-detect. Specify if auto-detect fails."
+          selector:
+            entity:
+              filter:
+                domain: event
+          default: ""
 
-      adv_button_ch2_entity:
-        name: "Channel 2: Button Event Entity (manual override)"
-        description: "Leave empty to auto-detect. Specify if auto-detect fails."
-        selector:
-          entity:
-            filter:
-              domain: event
-        default: ""
+        adv_button_ch3_entity:
+          name: "Channel 3: Button Event Entity (manual override)"
+          description: "Leave empty to auto-detect. Specify if auto-detect fails."
+          selector:
+            entity:
+              filter:
+                domain: event
+          default: ""
 
-      adv_button_ch3_entity:
-        name: "Channel 3: Button Event Entity (manual override)"
-        description: "Leave empty to auto-detect. Specify if auto-detect fails."
-        selector:
-          entity:
-            filter:
-              domain: event
-        default: ""
+        adv_scroll_sensor_ch1_entity:
+          name: "Channel 1: Scroll Position Sensor (manual override, instant mode only)"
+          description: "Leave empty to auto-detect. Specify if auto-detect fails."
+          selector:
+            entity:
+              filter:
+                domain: sensor
+          default: ""
 
-      adv_scroll_sensor_ch1_entity:
-        name: "Channel 1: Scroll Position Sensor (manual override, instant mode only)"
-        description: "Leave empty to auto-detect. Specify if auto-detect fails."
-        selector:
-          entity:
-            filter:
-              domain: sensor
-        default: ""
+        adv_scroll_sensor_ch2_entity:
+          name: "Channel 2: Scroll Position Sensor (manual override, instant mode only)"
+          description: "Leave empty to auto-detect. Specify if auto-detect fails."
+          selector:
+            entity:
+              filter:
+                domain: sensor
+          default: ""
 
-      adv_scroll_sensor_ch2_entity:
-        name: "Channel 2: Scroll Position Sensor (manual override, instant mode only)"
-        description: "Leave empty to auto-detect. Specify if auto-detect fails."
-        selector:
-          entity:
-            filter:
-              domain: sensor
-        default: ""
-
-      adv_scroll_sensor_ch3_entity:
-        name: "Channel 3: Scroll Position Sensor (manual override, instant mode only)"
-        description: "Leave empty to auto-detect. Specify if auto-detect fails."
-        selector:
-          entity:
-            filter:
-              domain: sensor
-        default: ""
+        adv_scroll_sensor_ch3_entity:
+          name: "Channel 3: Scroll Position Sensor (manual override, instant mode only)"
+          description: "Leave empty to auto-detect. Specify if auto-detect fails."
+          selector:
+            entity:
+              filter:
+                domain: sensor
+          default: ""
 
 
 # ============================================================================
