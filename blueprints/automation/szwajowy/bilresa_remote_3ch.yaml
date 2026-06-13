@@ -1,0 +1,888 @@
+blueprint:
+  name: IKEA Bilresa Remote - 3 Channel Control
+  description: |
+    Flexible 3-channel automation for IKEA Bilresa (Matter/Thread) remote.
+    
+    Features:
+    - 3 independent channels, each controlling a light or media player
+    - 5 button actions per channel: click, double-click, triple-click, long-press, hold
+    - Smart scroll wheel modes: brightness, color temp, color hue, volume, or custom
+    - Auto-detection of remote entities by numeric suffix, with manual override option
+    - Instant mode (real-time feedback on rotation) by default
+    
+    Version: 1.0.0 (2026-06-13)
+    Author: Generated blueprint
+  domain: automation
+
+# ============================================================================
+# INPUT SELECTORS
+# ============================================================================
+
+input:
+  # ========== REMOTE SETUP ==========
+  remote_device:
+    name: Remote Device
+    description: |
+      Select your IKEA Bilresa remote connected via Matter.
+      The blueprint will auto-detect event and sensor entities by numeric suffix (1, 2, 3).
+    selector:
+      device:
+        filter:
+          manufacturer: IKEA of Sweden
+          model: BILRESA scroll wheel
+          integration: matter
+
+  # ========== CHANNEL 1 ==========
+  channel1_section:
+    name: "⚙️ Channel 1"
+    collapsed: true
+    input:
+      channel1_target:
+        name: "Channel 1: Target Entity"
+        description: "Select a light or media player to control on this channel"
+        selector:
+          entity:
+            filter:
+              domain:
+                - light
+                - media_player
+        default: ""
+
+      channel1_scroll_mode:
+        name: "Channel 1: Scroll Wheel Mode"
+        description: "Select what the knob rotation controls"
+        selector:
+          select:
+            options:
+              - "lights: brightness"
+              - "lights: color temperature"
+              - "lights: color hue"
+              - "media: volume"
+              - "custom action"
+        default: "lights: brightness"
+
+      channel1_scroll_mode_instant:
+        name: "Channel 1: Instant Mode"
+        description: |
+          - ON: Continuous feedback on every rotation (smoother, more responsive)
+          - OFF: Single action after rotation completes (relaxed, less load)
+        selector:
+          boolean:
+        default: true
+
+      channel1_click_action:
+        name: "Channel 1: Single Click Action"
+        description: "Define what happens on a single button press"
+        selector:
+          action:
+        default: []
+
+      channel1_double_click_action:
+        name: "Channel 1: Double-Click Action"
+        description: "Define what happens on double-click"
+        selector:
+          action:
+        default: []
+
+      channel1_triple_click_action:
+        name: "Channel 1: Triple-Click Action"
+        description: "Define what happens on triple-click"
+        selector:
+          action:
+        default: []
+
+      channel1_long_press_action:
+        name: "Channel 1: Long-Press Action"
+        description: "Action triggered when button is held down initially"
+        selector:
+          action:
+        default: []
+
+      channel1_hold_action:
+        name: "Channel 1: Hold/Repeat Action"
+        description: "Action repeated while button is held (with delay between repeats)"
+        selector:
+          action:
+        default: []
+
+      channel1_scroll_custom_action:
+        name: "Channel 1: Custom Scroll Action"
+        description: |
+          Define custom scroll wheel behavior (only used if scroll mode is "custom action").
+          Variables available:
+          - scroll_direction: 'left' or 'right'
+          - scroll_clicks: number of rotation steps (1 in instant mode, 1-8 in relaxed mode)
+        selector:
+          action:
+        default: []
+
+  # ========== CHANNEL 2 ==========
+  channel2_section:
+    name: "⚙️ Channel 2"
+    collapsed: true
+    input:
+      channel2_target:
+        name: "Channel 2: Target Entity"
+        description: "Select a light or media player to control on this channel"
+        selector:
+          entity:
+            filter:
+              domain:
+                - light
+                - media_player
+        default: ""
+
+      channel2_scroll_mode:
+        name: "Channel 2: Scroll Wheel Mode"
+        description: "Select what the knob rotation controls"
+        selector:
+          select:
+            options:
+              - "lights: brightness"
+              - "lights: color temperature"
+              - "lights: color hue"
+              - "media: volume"
+              - "custom action"
+        default: "lights: brightness"
+
+      channel2_scroll_mode_instant:
+        name: "Channel 2: Instant Mode"
+        description: |
+          - ON: Continuous feedback on every rotation (smoother, more responsive)
+          - OFF: Single action after rotation completes (relaxed, less load)
+        selector:
+          boolean:
+        default: true
+
+      channel2_click_action:
+        name: "Channel 2: Single Click Action"
+        description: "Define what happens on a single button press"
+        selector:
+          action:
+        default: []
+
+      channel2_double_click_action:
+        name: "Channel 2: Double-Click Action"
+        description: "Define what happens on double-click"
+        selector:
+          action:
+        default: []
+
+      channel2_triple_click_action:
+        name: "Channel 2: Triple-Click Action"
+        description: "Define what happens on triple-click"
+        selector:
+          action:
+        default: []
+
+      channel2_long_press_action:
+        name: "Channel 2: Long-Press Action"
+        description: "Action triggered when button is held down initially"
+        selector:
+          action:
+        default: []
+
+      channel2_hold_action:
+        name: "Channel 2: Hold/Repeat Action"
+        description: "Action repeated while button is held (with delay between repeats)"
+        selector:
+          action:
+        default: []
+
+      channel2_scroll_custom_action:
+        name: "Channel 2: Custom Scroll Action"
+        description: |
+          Define custom scroll wheel behavior (only used if scroll mode is "custom action").
+          Variables available:
+          - scroll_direction: 'left' or 'right'
+          - scroll_clicks: number of rotation steps (1 in instant mode, 1-8 in relaxed mode)
+        selector:
+          action:
+        default: []
+
+  # ========== CHANNEL 3 ==========
+  channel3_section:
+    name: "⚙️ Channel 3"
+    collapsed: true
+    input:
+      channel3_target:
+        name: "Channel 3: Target Entity"
+        description: "Select a light or media player to control on this channel"
+        selector:
+          entity:
+            filter:
+              domain:
+                - light
+                - media_player
+        default: ""
+
+      channel3_scroll_mode:
+        name: "Channel 3: Scroll Wheel Mode"
+        description: "Select what the knob rotation controls"
+        selector:
+          select:
+            options:
+              - "lights: brightness"
+              - "lights: color temperature"
+              - "lights: color hue"
+              - "media: volume"
+              - "custom action"
+        default: "lights: brightness"
+
+      channel3_scroll_mode_instant:
+        name: "Channel 3: Instant Mode"
+        description: |
+          - ON: Continuous feedback on every rotation (smoother, more responsive)
+          - OFF: Single action after rotation completes (relaxed, less load)
+        selector:
+          boolean:
+        default: true
+
+      channel3_click_action:
+        name: "Channel 3: Single Click Action"
+        description: "Define what happens on a single button press"
+        selector:
+          action:
+        default: []
+
+      channel3_double_click_action:
+        name: "Channel 3: Double-Click Action"
+        description: "Define what happens on double-click"
+        selector:
+          action:
+        default: []
+
+      channel3_triple_click_action:
+        name: "Channel 3: Triple-Click Action"
+        description: "Define what happens on triple-click"
+        selector:
+          action:
+        default: []
+
+      channel3_long_press_action:
+        name: "Channel 3: Long-Press Action"
+        description: "Action triggered when button is held down initially"
+        selector:
+          action:
+        default: []
+
+      channel3_hold_action:
+        name: "Channel 3: Hold/Repeat Action"
+        description: "Action repeated while button is held (with delay between repeats)"
+        selector:
+          action:
+        default: []
+
+      channel3_scroll_custom_action:
+        name: "Channel 3: Custom Scroll Action"
+        description: |
+          Define custom scroll wheel behavior (only used if scroll mode is "custom action").
+          Variables available:
+          - scroll_direction: 'left' or 'right'
+          - scroll_clicks: number of rotation steps (1 in instant mode, 1-8 in relaxed mode)
+        selector:
+          action:
+        default: []
+
+  # ========== GLOBAL LIGHT SETTINGS ==========
+  global_light_settings:
+    name: "💡 Global Light Settings"
+    collapsed: true
+    input:
+      light_brightness_step_pct:
+        name: Brightness Step (%)
+        description: "Amount to change brightness per rotation step"
+        selector:
+          number:
+            min: 1
+            max: 50
+            step: 1
+        default: 10
+
+      light_brightness_min_pct:
+        name: Minimum Brightness (%)
+        description: "Do not dim below this percentage"
+        selector:
+          number:
+            min: 1
+            max: 100
+            step: 1
+        default: 5
+
+      light_brightness_turns_on:
+        name: "Brightness Turn On Lights"
+        description: "Allow brightness control to turn off lights when dimming below minimum"
+        selector:
+          boolean:
+        default: false
+
+      light_color_temp_min:
+        name: "Color Temperature Min (K)"
+        description: "Minimum color temperature in Kelvin (warmest)"
+        selector:
+          number:
+            min: 1000
+            max: 6500
+            step: 100
+        default: 2200
+
+      light_color_temp_max:
+        name: "Color Temperature Max (K)"
+        description: "Maximum color temperature in Kelvin (coolest)"
+        selector:
+          number:
+            min: 1000
+            max: 6500
+            step: 100
+        default: 4000
+
+      light_color_temp_step:
+        name: "Color Temperature Step (K)"
+        description: "Amount to change color temperature per rotation step"
+        selector:
+          number:
+            min: 10
+            max: 500
+            step: 10
+        default: 100
+
+      light_color_hue_step:
+        name: "Color Hue Step (°)"
+        description: "Amount to change color hue per rotation step (0-360°)"
+        selector:
+          number:
+            min: 1
+            max: 180
+            step: 1
+        default: 6
+
+      light_color_saturation:
+        name: "Color Saturation (%)"
+        description: "Saturation for color hue mode"
+        selector:
+          number:
+            min: 0
+            max: 100
+            step: 1
+        default: 100
+
+      light_transition_duration:
+        name: "Transition Duration (s)"
+        description: "Duration of light transitions/changes"
+        selector:
+          number:
+            min: 0
+            max: 10
+            step: 0.1
+        default: 0.5
+
+  # ========== GLOBAL MEDIA SETTINGS ==========
+  global_media_settings:
+    name: "🔊 Global Media Settings"
+    collapsed: true
+    input:
+      media_volume_step_pct:
+        name: "Volume Step (%)"
+        description: "Amount to change volume per rotation step"
+        selector:
+          number:
+            min: 0.5
+            max: 10
+            step: 0.5
+        default: 3.5
+
+      media_volume_max_pct:
+        name: "Maximum Volume (%)"
+        description: "Never increase volume above this percentage"
+        selector:
+          number:
+            min: 1
+            max: 100
+            step: 1
+        default: 70
+
+      media_volume_instant_uses_actions:
+        name: "Instant Mode: Use volume_up/volume_down"
+        description: "If ON, instant mode uses media_player.volume_up/down instead of volume_set (may be smoother on some devices)"
+        selector:
+          boolean:
+        default: true
+
+  # ========== GLOBAL MISC SETTINGS ==========
+  global_misc_settings:
+    name: "⚙️ Global Settings"
+    collapsed: true
+    input:
+      on_hold_delay:
+        name: "Hold Repeat Delay (s)"
+        description: "Delay between repeated actions while holding a button"
+        selector:
+          number:
+            min: 0.05
+            max: 1
+            step: 0.05
+        default: 0.1
+
+      max_queued_automation_calls:
+        name: "Max Queued Calls"
+        description: "Maximum number of automation calls to queue (increase if actions are missed)"
+        selector:
+          number:
+            min: 1
+            max: 50
+            step: 1
+        default: 10
+
+  # ========== ADVANCED SETTINGS ==========
+  advanced_settings:
+    name: "🔧 Advanced - Manual Entity Overrides"
+    collapsed: true
+    input:
+      adv_button_ch1_entity:
+        name: "Channel 1: Button Event Entity (manual override)"
+        description: "Leave empty to auto-detect. Specify if auto-detect fails."
+        selector:
+          entity:
+            filter:
+              domain: event
+        default: ""
+
+      adv_button_ch2_entity:
+        name: "Channel 2: Button Event Entity (manual override)"
+        description: "Leave empty to auto-detect. Specify if auto-detect fails."
+        selector:
+          entity:
+            filter:
+              domain: event
+        default: ""
+
+      adv_button_ch3_entity:
+        name: "Channel 3: Button Event Entity (manual override)"
+        description: "Leave empty to auto-detect. Specify if auto-detect fails."
+        selector:
+          entity:
+            filter:
+              domain: event
+        default: ""
+
+      adv_scroll_sensor_ch1_entity:
+        name: "Channel 1: Scroll Position Sensor (manual override, instant mode only)"
+        description: "Leave empty to auto-detect. Specify if auto-detect fails."
+        selector:
+          entity:
+            filter:
+              domain: sensor
+        default: ""
+
+      adv_scroll_sensor_ch2_entity:
+        name: "Channel 2: Scroll Position Sensor (manual override, instant mode only)"
+        description: "Leave empty to auto-detect. Specify if auto-detect fails."
+        selector:
+          entity:
+            filter:
+              domain: sensor
+        default: ""
+
+      adv_scroll_sensor_ch3_entity:
+        name: "Channel 3: Scroll Position Sensor (manual override, instant mode only)"
+        description: "Leave empty to auto-detect. Specify if auto-detect fails."
+        selector:
+          entity:
+            filter:
+              domain: sensor
+        default: ""
+
+
+# ============================================================================
+# AUTOMATION LOGIC
+# ============================================================================
+
+# Populate trigger list at runtime based on detected/manual entities
+trigger:
+  - platform: state
+    id: button_ch1
+    entity_id: "{{ trigger_entities_button_ch1 }}"
+  - platform: state
+    id: scroll_ch1
+    entity_id: "{{ trigger_entities_scroll_ch1 }}"
+  - platform: state
+    id: button_ch2
+    entity_id: "{{ trigger_entities_button_ch2 }}"
+  - platform: state
+    id: scroll_ch2
+    entity_id: "{{ trigger_entities_scroll_ch2 }}"
+  - platform: state
+    id: button_ch3
+    entity_id: "{{ trigger_entities_button_ch3 }}"
+  - platform: state
+    id: scroll_ch3
+    entity_id: "{{ trigger_entities_scroll_ch3 }}"
+
+condition:
+  # Only proceed if old and new states are not unavailable
+  - condition: template
+    value_template: >
+      {{ trigger.from_state is not none
+      and trigger.to_state is not none
+      and trigger.to_state.state != 'unavailable'
+      and trigger.from_state.state != 'unavailable' }}
+
+action:
+  - variables:
+      # Determine which channel triggered
+      channel: >
+        {% if trigger.id == 'button_ch1' or trigger.id == 'scroll_ch1' %}
+          ch1
+        {% elif trigger.id == 'button_ch2' or trigger.id == 'scroll_ch2' %}
+          ch2
+        {% elif trigger.id == 'button_ch3' or trigger.id == 'scroll_ch3' %}
+          ch3
+        {% endif %}
+
+      # Get event type from button press (only for button triggers)
+      event_type: "{{ trigger.to_state.attributes.get('event_type', '') if trigger.id | regex_search('^button_ch') else '' }}"
+
+      # Get target entity and scroll mode for active channel
+      target_entity: "{{ vars['target_' ~ channel] }}"
+      scroll_mode: "{{ vars['mode_' ~ channel] }}"
+      
+      # Determine scroll direction from the change in sensor state
+      # Note: sensor state changes on rotation - we need to check previous state
+      scroll_direction: >
+        {% if trigger.id | regex_search('^scroll_ch') and trigger.from_state is not none %}
+          {% if trigger.to_state.state | int(0) > trigger.from_state.state | int(0) %}
+            right
+          {% else %}
+            left
+          {% endif %}
+        {% endif %}
+
+      # Scroll clicks - in instant mode each step = 1 click
+      scroll_clicks: 1
+
+  # Dispatch to appropriate action based on trigger type
+  - choose:
+      # === BUTTON ACTIONS ===
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.id | regex_search('^button_ch') }}"
+        sequence:
+          - choose:
+              # Single Click
+              - conditions:
+                  - condition: template
+                    value_template: "{{ event_type == 'multi_press_1' }}"
+                sequence:
+                  - choose:
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ channel == 'ch1' }}"
+                        sequence: !input channel1_click_action
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ channel == 'ch2' }}"
+                        sequence: !input channel2_click_action
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ channel == 'ch3' }}"
+                        sequence: !input channel3_click_action
+
+              # Double Click
+              - conditions:
+                  - condition: template
+                    value_template: "{{ event_type == 'multi_press_2' }}"
+                sequence:
+                  - choose:
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ channel == 'ch1' }}"
+                        sequence: !input channel1_double_click_action
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ channel == 'ch2' }}"
+                        sequence: !input channel2_double_click_action
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ channel == 'ch3' }}"
+                        sequence: !input channel3_double_click_action
+
+              # Triple Click
+              - conditions:
+                  - condition: template
+                    value_template: "{{ event_type == 'multi_press_3' }}"
+                sequence:
+                  - choose:
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ channel == 'ch1' }}"
+                        sequence: !input channel1_triple_click_action
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ channel == 'ch2' }}"
+                        sequence: !input channel2_triple_click_action
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ channel == 'ch3' }}"
+                        sequence: !input channel3_triple_click_action
+
+              # Long Press & Hold
+              - conditions:
+                  - condition: template
+                    value_template: "{{ event_type == 'long_press' }}"
+                sequence:
+                  - choose:
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ channel == 'ch1' }}"
+                        sequence:
+                          - sequence: !input channel1_long_press_action
+                          - repeat:
+                              while:
+                                - condition: template
+                                  value_template: "{{ state_attr(var_button_ch1, 'event_type') == 'long_press' }}"
+                              sequence:
+                                - sequence: !input channel1_hold_action
+                                - delay: "{{ var_on_hold_delay }}"
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ channel == 'ch2' }}"
+                        sequence:
+                          - sequence: !input channel2_long_press_action
+                          - repeat:
+                              while:
+                                - condition: template
+                                  value_template: "{{ state_attr(var_button_ch2, 'event_type') == 'long_press' }}"
+                              sequence:
+                                - sequence: !input channel2_hold_action
+                                - delay: "{{ var_on_hold_delay }}"
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ channel == 'ch3' }}"
+                        sequence:
+                          - sequence: !input channel3_long_press_action
+                          - repeat:
+                              while:
+                                - condition: template
+                                  value_template: "{{ state_attr(var_button_ch3, 'event_type') == 'long_press' }}"
+                              sequence:
+                                - sequence: !input channel3_hold_action
+                                - delay: "{{ var_on_hold_delay }}"
+
+      # === SCROLL WHEEL ACTIONS ===
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.id | regex_search('^scroll_ch') and target_entity != '' }}"
+        sequence:
+          - choose:
+              # Brightness Mode (Light)
+              - conditions:
+                  - condition: template
+                    value_template: "{{ scroll_mode == 'lights: brightness' and target_entity.split('.')[0] == 'light' }}"
+                sequence:
+                  - service: light.turn_on
+                    target:
+                      entity_id: "{{ target_entity }}"
+                    data:
+                      brightness_step_pct: >
+                        {{ iif(scroll_direction == 'right', scroll_clicks * var_light_brightness_step_pct, -1 * scroll_clicks * var_light_brightness_step_pct) }}
+                      transition: "{{ var_light_transition_duration }}"
+
+              # Color Temperature Mode (Light)
+              - conditions:
+                  - condition: template
+                    value_template: "{{ scroll_mode == 'lights: color temperature' and target_entity.split('.')[0] == 'light' and state_attr(target_entity, 'color_temp_kelvin') is not none }}"
+                sequence:
+                  - service: light.turn_on
+                    target:
+                      entity_id: "{{ target_entity }}"
+                    data:
+                      color_temp_kelvin: >
+                        {% set current = state_attr(target_entity, 'color_temp_kelvin') | int(var_light_color_temp_max) %}
+                        {% set step = iif(scroll_direction == 'right', var_light_color_temp_step, -var_light_color_temp_step) * scroll_clicks %}
+                        {{ [[current + step, var_light_color_temp_max] | min, var_light_color_temp_min] | max }}
+                      transition: "{{ var_light_transition_duration }}"
+
+              # Color Hue Mode (Light)
+              - conditions:
+                  - condition: template
+                    value_template: "{{ scroll_mode == 'lights: color hue' and target_entity.split('.')[0] == 'light' and state_attr(target_entity, 'hs_color') is not none }}"
+                sequence:
+                  - service: light.turn_on
+                    target:
+                      entity_id: "{{ target_entity }}"
+                    data:
+                      hs_color:
+                        - >
+                          {% set current_hs = state_attr(target_entity, 'hs_color') %}
+                          {% if current_hs %}
+                            {% set current_hue = current_hs[0] | float(0) %}
+                            {% set step = iif(scroll_direction == 'right', var_light_color_hue_step, -var_light_color_hue_step) * scroll_clicks %}
+                            {% set new_hue = (current_hue + step) % 360 %}
+                            {{ new_hue | round(1) }}
+                          {% endif %}
+                        - "{{ var_light_color_saturation }}"
+                      transition: "{{ var_light_transition_duration }}"
+
+              # Volume Mode (Media Player)
+              - conditions:
+                  - condition: template
+                    value_template: "{{ scroll_mode == 'media: volume' and target_entity.split('.')[0] == 'media_player' }}"
+                sequence:
+                  - service: media_player.volume_set
+                    target:
+                      entity_id: "{{ target_entity }}"
+                    data:
+                      volume_level: >
+                        {% set current_vol = state_attr(target_entity, 'volume_level') | float(0) %}
+                        {% set step = iif(scroll_direction == 'right', scroll_clicks * var_media_volume_step_pct / 100, -scroll_clicks * var_media_volume_step_pct / 100) %}
+                        {{ [[current_vol + step, var_media_volume_max_pct / 100] | min, 0] | max }}
+
+              # Custom Action Mode
+              - conditions:
+                  - condition: template
+                    value_template: "{{ scroll_mode == 'custom action' }}"
+                sequence:
+                  - choose:
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ channel == 'ch1' }}"
+                        sequence: !input channel1_scroll_custom_action
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ channel == 'ch2' }}"
+                        sequence: !input channel2_scroll_custom_action
+                      - conditions:
+                          - condition: template
+                            value_template: "{{ channel == 'ch3' }}"
+                        sequence: !input channel3_scroll_custom_action
+
+mode: queued
+max: !input max_queued_automation_calls
+max_exceeded: silent
+
+variables:
+  # Channel target entities
+  target_ch1: !input channel1_target
+  target_ch2: !input channel2_target
+  target_ch3: !input channel3_target
+
+  # Channel scroll modes
+  mode_ch1: !input channel1_scroll_mode
+  mode_ch2: !input channel2_scroll_mode
+  mode_ch3: !input channel3_scroll_mode
+
+  # Channel instant modes
+  instant_ch1: !input channel1_scroll_mode_instant
+  instant_ch2: !input channel2_scroll_mode_instant
+  instant_ch3: !input channel3_scroll_mode_instant
+
+  # Global light settings
+  var_light_brightness_step_pct: !input light_brightness_step_pct
+  var_light_brightness_min_pct: !input light_brightness_min_pct
+  var_light_brightness_turns_on: !input light_brightness_turns_on
+  var_light_color_temp_min: !input light_color_temp_min
+  var_light_color_temp_max: !input light_color_temp_max
+  var_light_color_temp_step: !input light_color_temp_step
+  var_light_color_hue_step: !input light_color_hue_step
+  var_light_color_saturation: !input light_color_saturation
+  var_light_transition_duration: !input light_transition_duration
+
+  # Global media settings
+  var_media_volume_step_pct: !input media_volume_step_pct
+  var_media_volume_max_pct: !input media_volume_max_pct
+  var_media_volume_instant_uses_actions: !input media_volume_instant_uses_actions
+
+  # Global misc settings
+  var_on_hold_delay: !input on_hold_delay
+
+  manual_button_ch1: !input adv_button_ch1_entity
+  manual_button_ch2: !input adv_button_ch2_entity
+  manual_button_ch3: !input adv_button_ch3_entity
+  manual_scroll_ch1: !input adv_scroll_sensor_ch1_entity
+  manual_scroll_ch2: !input adv_scroll_sensor_ch2_entity
+  manual_scroll_ch3: !input adv_scroll_sensor_ch3_entity
+
+  # Button entities (for hold loop detection in action)
+  # Use manual override if provided, otherwise use auto-detected from trigger_variables
+  var_button_ch1: "{{ manual_button_ch1 or trigger.variables.auto_button_ch1 or '' }}"
+  var_button_ch2: "{{ manual_button_ch2 or trigger.variables.auto_button_ch2 or '' }}"
+  var_button_ch3: "{{ manual_button_ch3 or trigger.variables.auto_button_ch3 or '' }}"
+
+trigger_variables:
+  var_remote: !input remote_device
+  var_adv_button_ch1: !input adv_button_ch1_entity
+  var_adv_button_ch2: !input adv_button_ch2_entity
+  var_adv_button_ch3: !input adv_button_ch3_entity
+  var_adv_scroll_ch1: !input adv_scroll_sensor_ch1_entity
+  var_adv_scroll_ch2: !input adv_scroll_sensor_ch2_entity
+  var_adv_scroll_ch3: !input adv_scroll_sensor_ch3_entity
+
+  # === AUTO-DETECT LOGIC: Find entities by numeric suffix ===
+  # Find event and sensor entities that match patterns like _1, _2, _3
+  
+  # CHANNEL 1: Look for entities ending in _1 or _ch1
+  auto_button_ch1: >
+    {% set matching = [] %}
+    {% for ent in device_entities(var_remote) %}
+      {% if ent.startswith('event.') and (ent.endswith('_1') or '_ch1' in ent) %}
+        {% set matching = matching + [ent] %}
+      {% endif %}
+    {% endfor %}
+    {{ matching | first | default('') }}
+
+  auto_scroll_ch1: >
+    {% set matching = [] %}
+    {% for ent in device_entities(var_remote) %}
+      {% if ent.startswith('sensor.') and (ent.endswith('_1') or '_ch1' in ent) %}
+        {% set matching = matching + [ent] %}
+      {% endif %}
+    {% endfor %}
+    {{ matching | first | default('') }}
+
+  # CHANNEL 2: Look for entities ending in _2 or _ch2
+  auto_button_ch2: >
+    {% set matching = [] %}
+    {% for ent in device_entities(var_remote) %}
+      {% if ent.startswith('event.') and (ent.endswith('_2') or '_ch2' in ent) %}
+        {% set matching = matching + [ent] %}
+      {% endif %}
+    {% endfor %}
+    {{ matching | first | default('') }}
+
+  auto_scroll_ch2: >
+    {% set matching = [] %}
+    {% for ent in device_entities(var_remote) %}
+      {% if ent.startswith('sensor.') and (ent.endswith('_2') or '_ch2' in ent) %}
+        {% set matching = matching + [ent] %}
+      {% endif %}
+    {% endfor %}
+    {{ matching | first | default('') }}
+
+  # CHANNEL 3: Look for entities ending in _3 or _ch3
+  auto_button_ch3: >
+    {% set matching = [] %}
+    {% for ent in device_entities(var_remote) %}
+      {% if ent.startswith('event.') and (ent.endswith('_3') or '_ch3' in ent) %}
+        {% set matching = matching + [ent] %}
+      {% endif %}
+    {% endfor %}
+    {{ matching | first | default('') }}
+
+  auto_scroll_ch3: >
+    {% set matching = [] %}
+    {% for ent in device_entities(var_remote) %}
+      {% if ent.startswith('sensor.') and (ent.endswith('_3') or '_ch3' in ent) %}
+        {% set matching = matching + [ent] %}
+      {% endif %}
+    {% endfor %}
+    {{ matching | first | default('') }}
+
+  # === TRIGGER ENTITIES FOR AUTOMATION ===
+  # Use manual override first, then auto-detected, otherwise a harmless placeholder.
+  trigger_entities_button_ch1: "{{ var_adv_button_ch1 or auto_button_ch1 or 'automation.none' }}"
+  trigger_entities_button_ch2: "{{ var_adv_button_ch2 or auto_button_ch2 or 'automation.none' }}"
+  trigger_entities_button_ch3: "{{ var_adv_button_ch3 or auto_button_ch3 or 'automation.none' }}"
+
+  trigger_entities_scroll_ch1: "{{ var_adv_scroll_ch1 or auto_scroll_ch1 or 'automation.none' }}"
+  trigger_entities_scroll_ch2: "{{ var_adv_scroll_ch2 or auto_scroll_ch2 or 'automation.none' }}"
+  trigger_entities_scroll_ch3: "{{ var_adv_scroll_ch3 or auto_scroll_ch3 or 'automation.none' }}"
