@@ -410,33 +410,45 @@ blueprint:
 
 # Populate trigger list at runtime based on detected/manual entities
 trigger:
-  - platform: state
+  - trigger: event
+    event_type: state_changed
     id: button_ch1
-    entity_id: "{{ trigger_entities_button_ch1 }}"
-  - platform: state
+    event_data:
+      entity_id: "{{ trigger_entities_button_ch1 }}"
+  - trigger: event
+    event_type: state_changed
     id: scroll_ch1
-    entity_id: "{{ trigger_entities_scroll_ch1 }}"
-  - platform: state
+    event_data:
+      entity_id: "{{ trigger_entities_scroll_ch1 }}"
+  - trigger: event
+    event_type: state_changed
     id: button_ch2
-    entity_id: "{{ trigger_entities_button_ch2 }}"
-  - platform: state
+    event_data:
+      entity_id: "{{ trigger_entities_button_ch2 }}"
+  - trigger: event
+    event_type: state_changed
     id: scroll_ch2
-    entity_id: "{{ trigger_entities_scroll_ch2 }}"
-  - platform: state
+    event_data:
+      entity_id: "{{ trigger_entities_scroll_ch2 }}"
+  - trigger: event
+    event_type: state_changed
     id: button_ch3
-    entity_id: "{{ trigger_entities_button_ch3 }}"
-  - platform: state
+    event_data:
+      entity_id: "{{ trigger_entities_button_ch3 }}"
+  - trigger: event
+    event_type: state_changed
     id: scroll_ch3
-    entity_id: "{{ trigger_entities_scroll_ch3 }}"
+    event_data:
+      entity_id: "{{ trigger_entities_scroll_ch3 }}"
 
 condition:
   # Only proceed if old and new states are not unavailable
   - condition: template
     value_template: >
-      {{ trigger.from_state is not none
-      and trigger.to_state is not none
-      and trigger.to_state.state != 'unavailable'
-      and trigger.from_state.state != 'unavailable' }}
+      {{ trigger.event.data.old_state is not none
+      and trigger.event.data.new_state is not none
+      and trigger.event.data.new_state.state != 'unavailable'
+      and trigger.event.data.old_state.state != 'unavailable' }}
 
 action:
   - variables:
@@ -451,7 +463,7 @@ action:
         {% endif %}
 
       # Get event type from button press (only for button triggers)
-      event_type: "{{ trigger.to_state.attributes.get('event_type', '') if trigger.id | regex_search('^button_ch') else '' }}"
+      event_type: "{{ trigger.event.data.new_state.attributes.get('event_type', '') if trigger.id | regex_search('^button_ch') else '' }}"
 
       # Get target entity and scroll mode for active channel
       target_entity: "{{ vars['target_' ~ channel] }}"
@@ -460,8 +472,8 @@ action:
       # Determine scroll direction from the change in sensor state
       # Note: sensor state changes on rotation - we need to check previous state
       scroll_direction: >
-        {% if trigger.id | regex_search('^scroll_ch') and trigger.from_state is not none %}
-          {% if trigger.to_state.state | int(0) > trigger.from_state.state | int(0) %}
+        {% if trigger.id | regex_search('^scroll_ch') and trigger.event.data.old_state is not none %}
+          {% if trigger.event.data.new_state.state | int(0) > trigger.event.data.old_state.state | int(0) %}
             right
           {% else %}
             left
