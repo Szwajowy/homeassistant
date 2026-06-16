@@ -17,7 +17,7 @@ blueprint:
     „Ręczny wybór encji" — 9 pozycji: dla każdego kanału przycisk oraz czujnik
     obrotu w lewo i w prawo.
 
-    Wersja: 2.0.0 (2026-06-14)
+    Wersja: 2.0.1 (2026-06-16)
   domain: automation
   input:
     remote_device:
@@ -520,12 +520,17 @@ trigger:
 
 condition:
   # Pomijaj zdarzenia bez prawidłowego stanu.
+  # Dla przycisków akceptuj tylko obsługiwane typy zdarzeń Matter
+  # (odrzuca initial_press, short_release, multi_press_complete itp.).
   - condition: template
     value_template: >-
       {{ trigger.event.data.old_state is not none
          and trigger.event.data.new_state is not none
          and trigger.event.data.new_state.state not in ['unavailable', 'unknown']
-         and trigger.event.data.old_state.state not in ['unavailable', 'unknown'] }}
+         and trigger.event.data.old_state.state not in ['unavailable', 'unknown']
+         and (not trigger.id.startswith('button_') or
+              trigger.event.data.new_state.state in
+              ['multi_press_1', 'multi_press_2', 'multi_press_3', 'long_press']) }}
 
 action:
   - variables:
@@ -536,8 +541,9 @@ action:
       is_button: "{{ trigger.id.startswith('button_') }}"
       is_scroll: "{{ trigger.id.startswith('scroll_') }}"
       # Typ zdarzenia przycisku (tylko dla wyzwalaczy przycisku).
+      # W domenie event HA typ zdarzenia jest w state, nie w atrybutach.
       event_type: >-
-        {{ trigger.event.data.new_state.attributes.get('event_type', '')
+        {{ trigger.event.data.new_state.state
            if trigger.id.startswith('button_') else '' }}
       # Element sterowany i tryb pokrętła dla aktywnego kanału.
       target_entity: "{{ vars['target_' ~ channel] }}"
