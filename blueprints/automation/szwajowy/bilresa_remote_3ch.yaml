@@ -602,7 +602,7 @@ action:
                     - condition: template
                       value_template: >-
                         {{ repeat.index < 100
-                           and state_attr(ent_button_ch1, 'event_type') == 'long_press' }}
+                           and states(var_button_ch1) == 'long_press' }}
                   sequence:
                     - sequence: !input channel1_hold_action
                     - delay: "{{ var_on_hold_delay }}"
@@ -614,7 +614,7 @@ action:
                     - condition: template
                       value_template: >-
                         {{ repeat.index < 100
-                           and state_attr(ent_button_ch2, 'event_type') == 'long_press' }}
+                           and states(var_button_ch2) == 'long_press' }}
                   sequence:
                     - sequence: !input channel2_hold_action
                     - delay: "{{ var_on_hold_delay }}"
@@ -626,7 +626,7 @@ action:
                     - condition: template
                       value_template: >-
                         {{ repeat.index < 100
-                           and state_attr(ent_button_ch3, 'event_type') == 'long_press' }}
+                           and states(var_button_ch3) == 'long_press' }}
                   sequence:
                     - sequence: !input channel3_hold_action
                     - delay: "{{ var_on_hold_delay }}"
@@ -737,6 +737,11 @@ max: !input max_queued_automation_calls
 max_exceeded: silent
 
 variables:
+  # Encje przycisków dostępne w kontekście akcji (trigger_variables są niedostępne w akcjach).
+  var_button_ch1: !input ch1_button_entity
+  var_button_ch2: !input ch2_button_entity
+  var_button_ch3: !input ch3_button_entity
+
   # Słownik do dynamicznego odczytu po nazwie kanału.
   vars:
     target_ch1: !input channel1_target
