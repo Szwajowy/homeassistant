@@ -469,72 +469,64 @@ trigger_variables:
   ent_scroll_right_ch3: !input ch3_scroll_right_entity
 
 trigger:
-  # --- Kanał 1 ---
-  - trigger: state
-    entity_id: "{{ ent_button_ch1 }}"
-    id: button_ch1
-  - trigger: state
-    entity_id: "{{ ent_scroll_left_ch1 }}"
-    id: scroll_left_ch1
-  - trigger: state
-    entity_id: "{{ ent_scroll_right_ch1 }}"
-    id: scroll_right_ch1
-  # --- Kanał 2 ---
-  - trigger: state
-    entity_id: "{{ ent_button_ch2 }}"
-    id: button_ch2
-  - trigger: state
-    entity_id: "{{ ent_scroll_left_ch2 }}"
-    id: scroll_left_ch2
-  - trigger: state
-    entity_id: "{{ ent_scroll_right_ch2 }}"
-    id: scroll_right_ch2
-  # --- Kanał 3 ---
-  - trigger: state
-    entity_id: "{{ ent_button_ch3 }}"
-    id: button_ch3
-  - trigger: state
-    entity_id: "{{ ent_scroll_left_ch3 }}"
-    id: scroll_left_ch3
-  - trigger: state
-    entity_id: "{{ ent_scroll_right_ch3 }}"
-    id: scroll_right_ch3
+  # Jeden wyzwalacz na wszystkie zmiany stanu — filtrowanie encji w warunku.
+  - trigger: event
+    event_type: state_changed
 
 condition:
-  # Pomijaj zdarzenia bez prawidłowego stanu.
+  # Przepuść tylko zdarzenia naszych encji z prawidłowym stanem.
   # Dla przycisków akceptuj tylko obsługiwane typy zdarzeń Matter
   # (odrzuca initial_press, short_release, multi_press_complete itp.).
   - condition: template
     value_template: >-
-      {{ trigger.to_state is not none
-         and trigger.from_state is not none
-         and trigger.to_state.state not in ['unavailable', 'unknown']
-         and trigger.from_state.state not in ['unavailable', 'unknown']
-         and (not trigger.id.startswith('button_') or
-              trigger.to_state.state in
+      {% set eid = trigger.event.data.entity_id %}
+      {% set our_entities = [ent_button_ch1, ent_button_ch2, ent_button_ch3,
+                             ent_scroll_left_ch1, ent_scroll_right_ch1,
+                             ent_scroll_left_ch2, ent_scroll_right_ch2,
+                             ent_scroll_left_ch3, ent_scroll_right_ch3]
+                           | select('ne', '') | list %}
+      {{ eid in our_entities
+         and trigger.event.data.old_state is not none
+         and trigger.event.data.new_state is not none
+         and trigger.event.data.new_state.state not in ['unavailable', 'unknown']
+         and trigger.event.data.old_state.state not in ['unavailable', 'unknown']
+         and (eid not in [ent_button_ch1, ent_button_ch2, ent_button_ch3] or
+              trigger.event.data.new_state.state in
               ['multi_press_1', 'multi_press_2', 'multi_press_3', 'long_press']) }}
 
 action:
   - variables:
-      # Aktywny kanał na podstawie ID wyzwalacza.
-      channel: >-
-        {{ 'ch1' if trigger.id.endswith('ch1')
-           else ('ch2' if trigger.id.endswith('ch2') else 'ch3') }}
-      is_button: "{{ trigger.id.startswith('button_') }}"
-      is_scroll: "{{ trigger.id.startswith('scroll_') }}"
-      # Typ zdarzenia przycisku (tylko dla wyzwalaczy przycisku).
-      # W domenie event HA typ zdarzenia jest w state, nie w atrybutach.
+      # Aktywny kanał i typ na podstawie entity_id wyzwalanego czujnika.
+      is_button: >-
+        {{ trigger.event.data.entity_id in
+           [var_button_ch1, var_button_ch2, var_button_ch3] }}
+      is_scroll: >-
+        {{ trigger.event.data.entity_id not in
+           [var_button_ch1, var_button_ch2, var_button_ch3] }}
       event_type: >-
-        {{ trigger.to_state.state
-           if trigger.id.startswith('button_') else '' }}
-      # Element sterowany i tryb pokrętła dla aktywnego kanału.
-      target_entity: "{{ vars['target_' ~ channel] }}"
-      scroll_mode: "{{ vars['mode_' ~ channel] }}"
-      # Kierunek obrotu wynika z tego, który czujnik się wyzwolił.
+        {{ trigger.event.data.new_state.state
+           if trigger.event.data.entity_id in
+              [var_button_ch1, var_button_ch2, var_button_ch3] else '' }}
+      channel: >-
+        {% set eid = trigger.event.data.entity_id %}
+        {% if eid in [var_button_ch1, var_scroll_left_ch1, var_scroll_right_ch1] %}ch1
+        {% elif eid in [var_button_ch2, var_scroll_left_ch2, var_scroll_right_ch2] %}ch2
+        {% else %}ch3{% endif %}
+      target_entity: >-
+        {% set eid = trigger.event.data.entity_id %}
+        {% if eid in [var_button_ch1, var_scroll_left_ch1, var_scroll_right_ch1] %}{{ vars.target_ch1 }}
+        {% elif eid in [var_button_ch2, var_scroll_left_ch2, var_scroll_right_ch2] %}{{ vars.target_ch2 }}
+        {% else %}{{ vars.target_ch3 }}{% endif %}
+      scroll_mode: >-
+        {% set eid = trigger.event.data.entity_id %}
+        {% if eid in [var_button_ch1, var_scroll_left_ch1, var_scroll_right_ch1] %}{{ vars.mode_ch1 }}
+        {% elif eid in [var_button_ch2, var_scroll_left_ch2, var_scroll_right_ch2] %}{{ vars.mode_ch2 }}
+        {% else %}{{ vars.mode_ch3 }}{% endif %}
       scroll_direction: >-
-        {{ 'left' if trigger.id.startswith('scroll_left_')
-           else ('right' if trigger.id.startswith('scroll_right_') else '') }}
-      # W trybie instant każdy krok obrotu to 1 klik.
+        {% set eid = trigger.event.data.entity_id %}
+        {% if eid in [var_scroll_left_ch1, var_scroll_left_ch2, var_scroll_left_ch3] %}left
+        {% elif eid in [var_scroll_right_ch1, var_scroll_right_ch2, var_scroll_right_ch3] %}right
+        {% else %}{% endif %}
       scroll_clicks: 1
 
   - choose:
@@ -619,7 +611,7 @@ action:
           - condition: template
             value_template: >-
               {{ is_scroll
-                 and trigger.to_state.state == '1'
+                 and trigger.event.data.new_state.state == '1'
                  and target_entity not in [none, ''] }}
         sequence:
           - choose:
@@ -719,10 +711,17 @@ max: !input max_queued_automation_calls
 max_exceeded: silent
 
 variables:
-  # Encje przycisków dostępne w kontekście akcji (trigger_variables są niedostępne w akcjach).
+  # Encje przycisków i pokrętła dostępne w kontekście akcji
+  # (trigger_variables są niedostępne w akcjach).
   var_button_ch1: !input ch1_button_entity
   var_button_ch2: !input ch2_button_entity
   var_button_ch3: !input ch3_button_entity
+  var_scroll_left_ch1: !input ch1_scroll_left_entity
+  var_scroll_right_ch1: !input ch1_scroll_right_entity
+  var_scroll_left_ch2: !input ch2_scroll_left_entity
+  var_scroll_right_ch2: !input ch2_scroll_right_entity
+  var_scroll_left_ch3: !input ch3_scroll_left_entity
+  var_scroll_right_ch3: !input ch3_scroll_right_entity
 
   # Słownik do dynamicznego odczytu po nazwie kanału.
   vars:
