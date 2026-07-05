@@ -17,7 +17,7 @@ blueprint:
     „Ręczny wybór encji" — 9 pozycji: dla każdego kanału przycisk oraz czujnik
     obrotu w lewo i w prawo.
 
-    Wersja: 2.0.1 (2026-06-16)
+    Wersja: 2.0.2 (2026-07-05)
   domain: automation
   input:
     remote_device:
@@ -470,53 +470,35 @@ trigger_variables:
 
 trigger:
   # --- Kanał 1 ---
-  - trigger: event
-    event_type: state_changed
+  - trigger: state
+    entity_id: "{{ ent_button_ch1 }}"
     id: button_ch1
-    event_data:
-      entity_id: "{{ ent_button_ch1 }}"
-  - trigger: event
-    event_type: state_changed
+  - trigger: state
+    entity_id: "{{ ent_scroll_left_ch1 }}"
     id: scroll_left_ch1
-    event_data:
-      entity_id: "{{ ent_scroll_left_ch1 }}"
-  - trigger: event
-    event_type: state_changed
+  - trigger: state
+    entity_id: "{{ ent_scroll_right_ch1 }}"
     id: scroll_right_ch1
-    event_data:
-      entity_id: "{{ ent_scroll_right_ch1 }}"
   # --- Kanał 2 ---
-  - trigger: event
-    event_type: state_changed
+  - trigger: state
+    entity_id: "{{ ent_button_ch2 }}"
     id: button_ch2
-    event_data:
-      entity_id: "{{ ent_button_ch2 }}"
-  - trigger: event
-    event_type: state_changed
+  - trigger: state
+    entity_id: "{{ ent_scroll_left_ch2 }}"
     id: scroll_left_ch2
-    event_data:
-      entity_id: "{{ ent_scroll_left_ch2 }}"
-  - trigger: event
-    event_type: state_changed
+  - trigger: state
+    entity_id: "{{ ent_scroll_right_ch2 }}"
     id: scroll_right_ch2
-    event_data:
-      entity_id: "{{ ent_scroll_right_ch2 }}"
   # --- Kanał 3 ---
-  - trigger: event
-    event_type: state_changed
+  - trigger: state
+    entity_id: "{{ ent_button_ch3 }}"
     id: button_ch3
-    event_data:
-      entity_id: "{{ ent_button_ch3 }}"
-  - trigger: event
-    event_type: state_changed
+  - trigger: state
+    entity_id: "{{ ent_scroll_left_ch3 }}"
     id: scroll_left_ch3
-    event_data:
-      entity_id: "{{ ent_scroll_left_ch3 }}"
-  - trigger: event
-    event_type: state_changed
+  - trigger: state
+    entity_id: "{{ ent_scroll_right_ch3 }}"
     id: scroll_right_ch3
-    event_data:
-      entity_id: "{{ ent_scroll_right_ch3 }}"
 
 condition:
   # Pomijaj zdarzenia bez prawidłowego stanu.
@@ -524,12 +506,12 @@ condition:
   # (odrzuca initial_press, short_release, multi_press_complete itp.).
   - condition: template
     value_template: >-
-      {{ trigger.event.data.old_state is not none
-         and trigger.event.data.new_state is not none
-         and trigger.event.data.new_state.state not in ['unavailable', 'unknown']
-         and trigger.event.data.old_state.state not in ['unavailable', 'unknown']
+      {{ trigger.to_state is not none
+         and trigger.from_state is not none
+         and trigger.to_state.state not in ['unavailable', 'unknown']
+         and trigger.from_state.state not in ['unavailable', 'unknown']
          and (not trigger.id.startswith('button_') or
-              trigger.event.data.new_state.state in
+              trigger.to_state.state in
               ['multi_press_1', 'multi_press_2', 'multi_press_3', 'long_press']) }}
 
 action:
@@ -543,7 +525,7 @@ action:
       # Typ zdarzenia przycisku (tylko dla wyzwalaczy przycisku).
       # W domenie event HA typ zdarzenia jest w state, nie w atrybutach.
       event_type: >-
-        {{ trigger.event.data.new_state.state
+        {{ trigger.to_state.state
            if trigger.id.startswith('button_') else '' }}
       # Element sterowany i tryb pokrętła dla aktywnego kanału.
       target_entity: "{{ vars['target_' ~ channel] }}"
@@ -637,7 +619,7 @@ action:
           - condition: template
             value_template: >-
               {{ is_scroll
-                 and trigger.event.data.new_state.state == '1'
+                 and trigger.to_state.state == '1'
                  and target_entity not in [none, ''] }}
         sequence:
           - choose:
