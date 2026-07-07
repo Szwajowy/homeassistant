@@ -217,6 +217,21 @@ blueprint:
 
         snooze_interval_minutes:
           name: "🔁 Interwał ponawiania (drzemka)"
+          description: "Ile minut poczekać po kliknięciu przycisku Drzemka, zanim przyjdzie kolejne przypomnienie."
+          default: 15
+          selector:
+            number:
+              min: 1
+              max: 240
+              step: 1
+              unit_of_measurement: "min"
+              mode: slider
+
+        finish_no_response_minutes:
+          name: "⏱️ Przypomnij po braku reakcji (min)"
+          description: >
+            Jeśli użytkownik nie kliknie żadnego przycisku, powiadomienie
+            powtórzy się po tylu minutach. Osobny parametr od interwału Drzemki.
           default: 15
           selector:
             number:
@@ -660,6 +675,7 @@ actions:
 
       v_finish_actionable: !input finish_actionable
       v_snooze_interval_minutes: !input snooze_interval_minutes
+      v_finish_no_response_minutes: !input finish_no_response_minutes
       v_snooze_button_text: !input snooze_button_text
       v_dismiss_button_text: !input dismiss_button_text
 
@@ -872,6 +888,7 @@ actions:
                       data:
                         title: "{{ start_title_rendered }}"
                         message: "{{ start_message_rendered }}"
+                        tag: "{{ cycle_notification_tag }}"
 
           - if:
               - "{{ v_tts_enabled and v_tts_start_enabled }}"
@@ -917,6 +934,7 @@ actions:
                       data:
                         title: "{{ expensive_title_rendered }}"
                         message: "{{ expensive_message_rendered }}"
+                        tag: "{{ cycle_notification_tag }}"
 
       - conditions:
           - "{{ trigger.id == 'cycle_pre_end' }}"
@@ -948,6 +966,7 @@ actions:
                   data:
                     title: "{{ pre_end_title_rendered }}"
                     message: "{{ pre_end_message_rendered }}"
+                    tag: "{{ cycle_notification_tag }}"
 
       - conditions:
           - "{{ trigger.id == 'cycle_end' }}"
@@ -983,6 +1002,7 @@ actions:
                       data:
                         title: "{{ finish_title_rendered }}"
                         message: "{{ finish_message_rendered }}"
+                        tag: "{{ cycle_notification_tag }}"
 
           - if: "{{ v_finish_enabled | bool and v_finish_actionable | bool and not (non_flood_notifications_muted | bool) }}"
             then:
@@ -1000,12 +1020,18 @@ actions:
                             data:
                               title: "{{ finish_title_rendered }}"
                               message: "{{ finish_message_rendered }}"
+                              tag: "{{ cycle_notification_tag }}"
+                              actions:
+                                - action: "{{ action_snooze }}"
+                                  title: "{{ v_snooze_button_text }}"
+                                - action: "{{ action_dismiss }}"
+                                  title: "{{ v_dismiss_button_text }}"
 
                     - wait_for_trigger:
                         - trigger: event
                           event_type: mobile_app_notification_action
                       timeout:
-                        minutes: "{{ v_snooze_interval_minutes }}"
+                        minutes: "{{ v_finish_no_response_minutes }}"
                       continue_on_timeout: true
 
                     - choose:
@@ -1069,6 +1095,7 @@ actions:
                       data:
                         title: "{{ maintenance_title_rendered }}"
                         message: "{{ maintenance_message_rendered }}"
+                        tag: "{{ cycle_notification_tag }}"
 
           - if:
               - "{{ v_finish_extra_action | length > 0 }}"
@@ -1113,6 +1140,7 @@ actions:
                           data:
                             title: "{{ flood_title_rendered }}"
                             message: "{{ flood_message_rendered }}"
+                            tag: "{{ flood_notification_tag }}"
 
             default:
               - repeat:
@@ -1125,6 +1153,7 @@ actions:
                       data:
                         title: "{{ flood_title_rendered }}"
                         message: "{{ flood_message_rendered }}"
+                        tag: "{{ flood_notification_tag }}"
 
           - choose:
               - conditions:
@@ -1160,6 +1189,7 @@ actions:
                                   data:
                                     title: "{{ flood_auto_timeout_title_rendered }}"
                                     message: "{{ flood_auto_timeout_message_rendered }}"
+                                    tag: "{{ flood_notification_tag }}"
 
                       - conditions:
                           - "{{ wait.trigger != none and wait.trigger.event.data.action == action_flood_dismiss }}"
