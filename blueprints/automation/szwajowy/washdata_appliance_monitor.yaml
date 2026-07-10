@@ -728,7 +728,13 @@ actions:
 
       v_notify_entities: !input notify_entities
 
-      device_name: "{{ state_attr(v_wd_state_sensor, 'friendly_name') or v_wd_state_sensor }}"
+      device_name: >
+        {% set dev_id = device_id(v_wd_state_sensor) %}
+        {% if dev_id %}
+          {{ device_attr(dev_id, 'name_by_user') or device_attr(dev_id, 'name') or state_attr(v_wd_state_sensor, 'friendly_name') or v_wd_state_sensor }}
+        {% else %}
+          {{ state_attr(v_wd_state_sensor, 'friendly_name') or v_wd_state_sensor }}
+        {% endif %}
       program_name: "{{ states(v_wd_program_sensor) }}"
       minutes_left: "{{ states(v_wd_time_remaining_sensor) | int(0) }}"
       cycle_count: "{{ states(v_wd_cycle_count_sensor) | int(0) }}"
@@ -799,12 +805,6 @@ actions:
       action_dismiss: "WASH_DISMISS_{{ context.id }}"
       action_flood_confirm: "WASH_FLOOD_CONFIRM_{{ context.id }}"
       action_flood_dismiss: "WASH_FLOOD_DISMISS_{{ context.id }}"
-      cycle_notification_tag: >
-        {% set base = v_wd_state_sensor | string %}
-        wash_cycle_{{ base | replace('.', '_') | replace(' ', '_') }}
-      flood_notification_tag: >
-        {% set base = (v_flood_sensor_entity if v_flood_sensor_entity not in ['', none] else v_wd_state_sensor) | string %}
-        wash_flood_{{ base | replace('.', '_') | replace(' ', '_') }}
 
       notify_entities: "{{ v_notify_entities }}"
       v_flood_sensor_entity: >
@@ -817,6 +817,13 @@ actions:
         {% else %}
           {{ '' }}
         {% endif %}
+
+      cycle_notification_tag: >
+        {% set base = v_wd_state_sensor | string %}
+        wash_cycle_{{ base | replace('.', '_') | replace(' ', '_') }}
+      flood_notification_tag: >
+        {% set base = (v_flood_sensor_entity if v_flood_sensor_entity not in ['', none] else v_wd_state_sensor) | string %}
+        wash_flood_{{ base | replace('.', '_') | replace(' ', '_') }}
 
   - if: "{{ v_enable_logging }}"
     then:
