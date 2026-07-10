@@ -1124,6 +1124,11 @@ actions:
 
       action_snooze: "WINDOW_SNOOZE_{{ context.id }}"
       action_dismiss: "WINDOW_DISMISS_{{ context.id }}"
+      notify_actions: >
+        {{ [
+          {'action': action_snooze, 'title': v_snooze_button_text},
+          {'action': action_dismiss, 'title': v_dismiss_button_text}
+        ] if v_actionable_enabled else [] }}
 
   - if: "{{ v_enable_logging }}"
     then:
@@ -1143,13 +1148,13 @@ actions:
                   - repeat:
                       for_each: "{{ v_notify_entities }}"
                       sequence:
-                        - action: notify.send_message
+                        - action: "notify.{{ repeat.item.split('.')[1] }}"
                           continue_on_error: true
-                          target:
-                            entity_id: "{{ repeat.item }}"
                           data:
                             title: "{{ v_title_precip }}"
                             message: "{{ msg_precip }}"
+                            data:
+                              tag: "{{ v_critical_notification_tag }}"
                   - if:
                       - "{{ v_tts_enabled and v_tts_for_precip and tts_allowed }}"
                       - "{{ v_tts_engine_entity not in ['', none] }}"
@@ -1169,15 +1174,16 @@ actions:
                   - repeat:
                       for_each: "{{ v_notify_entities }}"
                       sequence:
-                        - action: notify.send_message
+                        - action: "notify.{{ repeat.item.split('.')[1] }}"
                           continue_on_error: true
-                          target:
-                            entity_id: "{{ repeat.item }}"
                           data:
                             title: "{{ v_title_away }}"
                             message: "{{ msg_away }}"
+                            data:
+                              tag: "{{ v_cycle_notification_tag }}"
+                              actions: "{{ notify_actions }}"
                   - if:
-                      - "{{ v_actionable_enabled and false }}"
+                      - "{{ v_actionable_enabled }}"
                     then:
                       - wait_for_trigger:
                           - trigger: event
@@ -1194,13 +1200,13 @@ actions:
                               - repeat:
                                   for_each: "{{ v_notify_entities }}"
                                   sequence:
-                                    - action: notify.send_message
+                                    - action: "notify.{{ repeat.item.split('.')[1] }}"
                                       continue_on_error: true
-                                      target:
-                                        entity_id: "{{ repeat.item }}"
                                       data:
                                         title: "{{ v_title_away }}"
                                         message: "{{ msg_away }}"
+                                        data:
+                                          tag: "{{ v_cycle_notification_tag }}"
                   - if:
                       - "{{ v_tts_enabled and v_tts_for_away and tts_allowed }}"
                       - "{{ v_tts_engine_entity not in ['', none] }}"
@@ -1220,15 +1226,16 @@ actions:
                   - repeat:
                       for_each: "{{ v_notify_entities }}"
                       sequence:
-                        - action: notify.send_message
+                        - action: "notify.{{ repeat.item.split('.')[1] }}"
                           continue_on_error: true
-                          target:
-                            entity_id: "{{ repeat.item }}"
                           data:
                             title: "{{ v_title_advisor_close }}"
                             message: "{{ msg_advisor_close }}"
+                            data:
+                              tag: "{{ v_cycle_notification_tag }}"
+                              actions: "{{ notify_actions }}"
                   - if:
-                      - "{{ v_actionable_enabled and false }}"
+                      - "{{ v_actionable_enabled }}"
                     then:
                       - wait_for_trigger:
                           - trigger: event
@@ -1245,13 +1252,13 @@ actions:
                               - repeat:
                                   for_each: "{{ v_notify_entities }}"
                                   sequence:
-                                    - action: notify.send_message
+                                    - action: "notify.{{ repeat.item.split('.')[1] }}"
                                       continue_on_error: true
-                                      target:
-                                        entity_id: "{{ repeat.item }}"
                                       data:
                                         title: "{{ v_title_advisor_close }}"
                                         message: "{{ msg_advisor_close }}"
+                                        data:
+                                          tag: "{{ v_cycle_notification_tag }}"
                   - if:
                       - "{{ v_tts_enabled and v_tts_for_advisor and tts_allowed }}"
                       - "{{ v_tts_engine_entity not in ['', none] }}"
@@ -1271,15 +1278,16 @@ actions:
                   - repeat:
                       for_each: "{{ v_notify_entities }}"
                       sequence:
-                        - action: notify.send_message
+                        - action: "notify.{{ repeat.item.split('.')[1] }}"
                           continue_on_error: true
-                          target:
-                            entity_id: "{{ repeat.item }}"
                           data:
                             title: "{{ v_title_advisor_open }}"
                             message: "{{ msg_advisor_open }}"
+                            data:
+                              tag: "{{ v_cycle_notification_tag }}"
+                              actions: "{{ notify_actions }}"
                   - if:
-                      - "{{ v_actionable_enabled and false }}"
+                      - "{{ v_actionable_enabled }}"
                     then:
                       - wait_for_trigger:
                           - trigger: event
@@ -1296,13 +1304,13 @@ actions:
                               - repeat:
                                   for_each: "{{ v_notify_entities }}"
                                   sequence:
-                                    - action: notify.send_message
+                                    - action: "notify.{{ repeat.item.split('.')[1] }}"
                                       continue_on_error: true
-                                      target:
-                                        entity_id: "{{ repeat.item }}"
                                       data:
                                         title: "{{ v_title_advisor_open }}"
                                         message: "{{ msg_advisor_open }}"
+                                        data:
+                                          tag: "{{ v_cycle_notification_tag }}"
                   - if:
                       - "{{ v_tts_enabled and v_tts_for_advisor and tts_allowed }}"
                       - "{{ v_tts_engine_entity not in ['', none] }}"
@@ -1331,13 +1339,13 @@ actions:
           - repeat:
               for_each: "{{ v_notify_entities }}"
               sequence:
-                - action: notify.send_message
+                - action: "notify.{{ repeat.item.split('.')[1] }}"
                   continue_on_error: true
-                  target:
-                    entity_id: "{{ repeat.item }}"
                   data:
                     title: "{{ v_title_summary }}"
                     message: "{{ summary_message }}"
+                    data:
+                      tag: "{{ v_cycle_notification_tag }}"
           - if:
               - "{{ v_tts_enabled and v_tts_for_summary and tts_allowed }}"
               - "{{ v_tts_engine_entity not in ['', none] }}"

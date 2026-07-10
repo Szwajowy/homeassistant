@@ -881,10 +881,8 @@ actions:
               - repeat:
                   for_each: "{{ notify_entities }}"
                   sequence:
-                    - action: notify.send_message
+                    - action: "notify.{{ repeat.item.split('.')[1] }}"
                       continue_on_error: true
-                      target:
-                        entity_id: "{{ repeat.item }}"
                       data:
                         title: "{{ start_title_rendered }}"
                         message: "{{ start_message_rendered }}"
@@ -928,10 +926,8 @@ actions:
               - repeat:
                   for_each: "{{ notify_entities }}"
                   sequence:
-                    - action: notify.send_message
+                    - action: "notify.{{ repeat.item.split('.')[1] }}"
                       continue_on_error: true
-                      target:
-                        entity_id: "{{ repeat.item }}"
                       data:
                         title: "{{ expensive_title_rendered }}"
                         message: "{{ expensive_message_rendered }}"
@@ -961,10 +957,8 @@ actions:
           - repeat:
               for_each: "{{ notify_entities }}"
               sequence:
-                - action: notify.send_message
+                - action: "notify.{{ repeat.item.split('.')[1] }}"
                   continue_on_error: true
-                  target:
-                    entity_id: "{{ repeat.item }}"
                   data:
                     title: "{{ pre_end_title_rendered }}"
                     message: "{{ pre_end_message_rendered }}"
@@ -998,10 +992,8 @@ actions:
               - repeat:
                   for_each: "{{ notify_entities }}"
                   sequence:
-                    - action: notify.send_message
+                    - action: "notify.{{ repeat.item.split('.')[1] }}"
                       continue_on_error: true
-                      target:
-                        entity_id: "{{ repeat.item }}"
                       data:
                         title: "{{ finish_title_rendered }}"
                         message: "{{ finish_message_rendered }}"
@@ -1017,10 +1009,8 @@ actions:
                     - repeat:
                         for_each: "{{ notify_entities }}"
                         sequence:
-                          - action: notify.send_message
+                          - action: "notify.{{ repeat.item.split('.')[1] }}"
                             continue_on_error: true
-                            target:
-                              entity_id: "{{ repeat.item }}"
                             data:
                               title: "{{ finish_title_rendered }}"
                               message: "{{ finish_message_rendered }}"
@@ -1093,10 +1083,8 @@ actions:
               - repeat:
                   for_each: "{{ notify_entities }}"
                   sequence:
-                    - action: notify.send_message
+                    - action: "notify.{{ repeat.item.split('.')[1] }}"
                       continue_on_error: true
-                      target:
-                        entity_id: "{{ repeat.item }}"
                       data:
                         title: "{{ maintenance_title_rendered }}"
                         message: "{{ maintenance_message_rendered }}"
@@ -1139,10 +1127,8 @@ actions:
                   - repeat:
                       for_each: "{{ notify_entities }}"
                       sequence:
-                        - action: notify.send_message
+                        - action: "notify.{{ repeat.item.split('.')[1] }}"
                           continue_on_error: true
-                          target:
-                            entity_id: "{{ repeat.item }}"
                           data:
                             title: "{{ flood_title_rendered }}"
                             message: "{{ flood_message_rendered }}"
@@ -1153,10 +1139,8 @@ actions:
               - repeat:
                   for_each: "{{ notify_entities }}"
                   sequence:
-                    - action: notify.send_message
+                    - action: "notify.{{ repeat.item.split('.')[1] }}"
                       continue_on_error: true
-                      target:
-                        entity_id: "{{ repeat.item }}"
                       data:
                         title: "{{ flood_title_rendered }}"
                         message: "{{ flood_message_rendered }}"
@@ -1190,10 +1174,8 @@ actions:
                           - repeat:
                               for_each: "{{ notify_entities }}"
                               sequence:
-                                - action: notify.send_message
+                                - action: "notify.{{ repeat.item.split('.')[1] }}"
                                   continue_on_error: true
-                                  target:
-                                    entity_id: "{{ repeat.item }}"
                                   data:
                                     title: "{{ flood_auto_timeout_title_rendered }}"
                                     message: "{{ flood_auto_timeout_message_rendered }}"
