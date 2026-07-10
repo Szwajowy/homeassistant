@@ -69,6 +69,19 @@ blueprint:
             entity:
               domain: sensor
 
+        wd_last_program_helper:
+          name: "💾 Helper: ostatni program (opcjonalny)"
+          description: >
+            Encja input_text do zapamiętania nazwy programu. Sensor programu
+            zwykle wraca do "off" w tym samym momencie, w którym sensor stanu
+            przechodzi na "finished", więc bez tego helpera powiadomienie o
+            końcu cyklu nie ma skąd wziąć nazwy programu. Utwórz w Ustawienia >
+            Urządzenia i usługi > Pomocnicy > Tekst.
+          default: ""
+          selector:
+            entity:
+              domain: input_text
+
     # =========================================================================
     # 🔔 SEKCJA 2: POWIADOMIENIA
     # =========================================================================
@@ -663,6 +676,7 @@ actions:
       v_wd_program_sensor: !input wd_program_sensor
       v_wd_time_remaining_sensor: !input wd_time_remaining_sensor
       v_wd_cycle_count_sensor: !input wd_cycle_count_sensor
+      v_wd_last_program_helper: !input wd_last_program_helper
       v_cycle_end_state: !input cycle_end_state
 
       v_start_enabled: !input start_enabled
@@ -845,6 +859,15 @@ actions:
             then:
               - stop: "Cycle start already reported (automation reload guard)"
 
+          - if: "{{ v_wd_last_program_helper not in ['', none] and program_name not in ['', 'off', 'unknown', 'unavailable', none] }}"
+            then:
+              - action: input_text.set_value
+                continue_on_error: true
+                target:
+                  entity_id: "{{ v_wd_last_program_helper }}"
+                data:
+                  value: "{{ program_name }}"
+
           - variables:
               start_title_rendered: >
                 {% set t = v_start_title %}
@@ -976,16 +999,23 @@ actions:
           - "{{ trigger.id == 'cycle_end' }}"
         sequence:
           - variables:
+              finish_program_name: >
+                {% set helper_val = states(v_wd_last_program_helper) if v_wd_last_program_helper not in ['', none] else none %}
+                {% if helper_val not in [none, '', 'unknown', 'unavailable'] %}
+                  {{ helper_val }}
+                {% else %}
+                  {{ program_name }}
+                {% endif %}
               finish_title_rendered: >
                 {% set t = v_finish_title %}
                 {% set t = t | replace('{device}', device_name) %}
-                {% set t = t | replace('{program}', program_name) %}
+                {% set t = t | replace('{program}', finish_program_name) %}
                 {% set t = t | replace('{duration_min}', duration_min | string) %}
                 {{ t }}
               finish_message_rendered: >
                 {% set t = v_finish_message %}
                 {% set t = t | replace('{device}', device_name) %}
-                {% set t = t | replace('{program}', program_name) %}
+                {% set t = t | replace('{program}', finish_program_name) %}
                 {% set t = t | replace('{duration_min}', duration_min | string) %}
                 {{ t }}
 
@@ -1067,7 +1097,7 @@ actions:
                   message: >
                     {% set t = v_tts_finish_message %}
                     {% set t = t | replace('{device}', device_name) %}
-                    {% set t = t | replace('{program}', program_name) %}
+                    {% set t = t | replace('{program}', finish_program_name) %}
                     {{ t }}
 
           - if:
