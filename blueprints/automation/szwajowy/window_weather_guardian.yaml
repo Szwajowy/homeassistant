@@ -1148,7 +1148,7 @@ actions:
                   - repeat:
                       for_each: "{{ v_notify_entities }}"
                       sequence:
-                        - action: "notify.{{ repeat.item.split('.')[1] }}"
+                        - action: "notify.mobile_app_{{ repeat.item.split('.')[1] }}"
                           continue_on_error: true
                           data:
                             title: "{{ v_title_precip }}"
@@ -1174,7 +1174,7 @@ actions:
                   - repeat:
                       for_each: "{{ v_notify_entities }}"
                       sequence:
-                        - action: "notify.{{ repeat.item.split('.')[1] }}"
+                        - action: "notify.mobile_app_{{ repeat.item.split('.')[1] }}"
                           continue_on_error: true
                           data:
                             title: "{{ v_title_away }}"
@@ -1200,7 +1200,7 @@ actions:
                               - repeat:
                                   for_each: "{{ v_notify_entities }}"
                                   sequence:
-                                    - action: "notify.{{ repeat.item.split('.')[1] }}"
+                                    - action: "notify.mobile_app_{{ repeat.item.split('.')[1] }}"
                                       continue_on_error: true
                                       data:
                                         title: "{{ v_title_away }}"
@@ -1226,7 +1226,7 @@ actions:
                   - repeat:
                       for_each: "{{ v_notify_entities }}"
                       sequence:
-                        - action: "notify.{{ repeat.item.split('.')[1] }}"
+                        - action: "notify.mobile_app_{{ repeat.item.split('.')[1] }}"
                           continue_on_error: true
                           data:
                             title: "{{ v_title_advisor_close }}"
@@ -1252,7 +1252,7 @@ actions:
                               - repeat:
                                   for_each: "{{ v_notify_entities }}"
                                   sequence:
-                                    - action: "notify.{{ repeat.item.split('.')[1] }}"
+                                    - action: "notify.mobile_app_{{ repeat.item.split('.')[1] }}"
                                       continue_on_error: true
                                       data:
                                         title: "{{ v_title_advisor_close }}"
@@ -1278,7 +1278,7 @@ actions:
                   - repeat:
                       for_each: "{{ v_notify_entities }}"
                       sequence:
-                        - action: "notify.{{ repeat.item.split('.')[1] }}"
+                        - action: "notify.mobile_app_{{ repeat.item.split('.')[1] }}"
                           continue_on_error: true
                           data:
                             title: "{{ v_title_advisor_open }}"
@@ -1304,7 +1304,7 @@ actions:
                               - repeat:
                                   for_each: "{{ v_notify_entities }}"
                                   sequence:
-                                    - action: "notify.{{ repeat.item.split('.')[1] }}"
+                                    - action: "notify.mobile_app_{{ repeat.item.split('.')[1] }}"
                                       continue_on_error: true
                                       data:
                                         title: "{{ v_title_advisor_open }}"
@@ -1339,7 +1339,7 @@ actions:
           - repeat:
               for_each: "{{ v_notify_entities }}"
               sequence:
-                - action: "notify.{{ repeat.item.split('.')[1] }}"
+                - action: "notify.mobile_app_{{ repeat.item.split('.')[1] }}"
                   continue_on_error: true
                   data:
                     title: "{{ v_title_summary }}"

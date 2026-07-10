@@ -881,7 +881,7 @@ actions:
               - repeat:
                   for_each: "{{ notify_entities }}"
                   sequence:
-                    - action: "notify.{{ repeat.item.split('.')[1] }}"
+                    - action: "notify.mobile_app_{{ repeat.item.split('.')[1] }}"
                       continue_on_error: true
                       data:
                         title: "{{ start_title_rendered }}"
@@ -926,7 +926,7 @@ actions:
               - repeat:
                   for_each: "{{ notify_entities }}"
                   sequence:
-                    - action: "notify.{{ repeat.item.split('.')[1] }}"
+                    - action: "notify.mobile_app_{{ repeat.item.split('.')[1] }}"
                       continue_on_error: true
                       data:
                         title: "{{ expensive_title_rendered }}"
@@ -957,7 +957,7 @@ actions:
           - repeat:
               for_each: "{{ notify_entities }}"
               sequence:
-                - action: "notify.{{ repeat.item.split('.')[1] }}"
+                - action: "notify.mobile_app_{{ repeat.item.split('.')[1] }}"
                   continue_on_error: true
                   data:
                     title: "{{ pre_end_title_rendered }}"
@@ -992,7 +992,7 @@ actions:
               - repeat:
                   for_each: "{{ notify_entities }}"
                   sequence:
-                    - action: "notify.{{ repeat.item.split('.')[1] }}"
+                    - action: "notify.mobile_app_{{ repeat.item.split('.')[1] }}"
                       continue_on_error: true
                       data:
                         title: "{{ finish_title_rendered }}"
@@ -1009,7 +1009,7 @@ actions:
                     - repeat:
                         for_each: "{{ notify_entities }}"
                         sequence:
-                          - action: "notify.{{ repeat.item.split('.')[1] }}"
+                          - action: "notify.mobile_app_{{ repeat.item.split('.')[1] }}"
                             continue_on_error: true
                             data:
                               title: "{{ finish_title_rendered }}"
@@ -1083,7 +1083,7 @@ actions:
               - repeat:
                   for_each: "{{ notify_entities }}"
                   sequence:
-                    - action: "notify.{{ repeat.item.split('.')[1] }}"
+                    - action: "notify.mobile_app_{{ repeat.item.split('.')[1] }}"
                       continue_on_error: true
                       data:
                         title: "{{ maintenance_title_rendered }}"
@@ -1127,7 +1127,7 @@ actions:
                   - repeat:
                       for_each: "{{ notify_entities }}"
                       sequence:
-                        - action: "notify.{{ repeat.item.split('.')[1] }}"
+                        - action: "notify.mobile_app_{{ repeat.item.split('.')[1] }}"
                           continue_on_error: true
                           data:
                             title: "{{ flood_title_rendered }}"
@@ -1139,7 +1139,7 @@ actions:
               - repeat:
                   for_each: "{{ notify_entities }}"
                   sequence:
-                    - action: "notify.{{ repeat.item.split('.')[1] }}"
+                    - action: "notify.mobile_app_{{ repeat.item.split('.')[1] }}"
                       continue_on_error: true
                       data:
                         title: "{{ flood_title_rendered }}"
@@ -1174,7 +1174,7 @@ actions:
                           - repeat:
                               for_each: "{{ notify_entities }}"
                               sequence:
-                                - action: "notify.{{ repeat.item.split('.')[1] }}"
+                                - action: "notify.mobile_app_{{ repeat.item.split('.')[1] }}"
                                   continue_on_error: true
                                   data:
                                     title: "{{ flood_auto_timeout_title_rendered }}"
